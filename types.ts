@@ -33,7 +33,8 @@ export interface CalculationResult {
   // Métricas de Eficiência
   CAC: number;
   LTV: number;
-  Lifetime: number; // Novo: Tempo de Vida em meses
+  Lifetime: number;
+  Payback: number; // Novo: Meses para recuperar o CAC
   ROI: number;
   LTV_CAC_Ratio: number;
   
@@ -51,4 +52,5 @@ export interface HistoryItem {
   mode: CalculationMode;
   inputs: FinancialInputs;
   result: CalculationResult;
+  currency?: string; // Novo: Salvar a moeda do contexto
 }

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { FinancialInputs, CalculationMode } from '../types';
-import { Calculator, Target, BarChart2, Info, DollarSign, Percent, Hash, Briefcase, RotateCcw, AlertCircle, TrendingDown, Megaphone, FolderOpen, Zap } from 'lucide-react';
+import { Calculator, Target, BarChart2, Info, DollarSign, Percent, Hash, Briefcase, RotateCcw, AlertCircle, TrendingDown, Megaphone, FolderOpen, Zap, Euro } from 'lucide-react';
 
 interface Props {
   inputs: FinancialInputs;
@@ -9,11 +9,17 @@ interface Props {
   mode: CalculationMode;
   setMode: (mode: CalculationMode) => void;
   onReset: () => void;
+  currency: string;
 }
 
-const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onReset }) => {
+const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onReset, currency }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showTemplates, setShowTemplates] = useState(false);
+
+  const getCurrencyIcon = () => {
+    if (currency === 'EUR') return <Euro size={14} />;
+    return <DollarSign size={14} />;
+  };
 
   const validateField = (name: string, value: number) => {
     let error = '';
@@ -26,7 +32,6 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
        error = 'O valor não pode ser negativo';
     }
 
-    // Specific rules
     if (name === 'TxP' && value > 100) error = 'A taxa não pode exceder 100%';
     if (name === 'MLL_D' && value >= 100) error = 'A margem deve ser menor que 100%';
     if (name === 'Churn' && value > 100) error = 'Churn não pode exceder 100%';
@@ -203,7 +208,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     name="CP" 
                     value={inputs.CP} 
                     onChange={handleChange} 
-                    icon={<DollarSign size={14} />} 
+                    icon={getCurrencyIcon()} 
                     placeholder="0.00"
                     error={errors.CP}
                   />
@@ -212,7 +217,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     name="CF" 
                     value={inputs.CF} 
                     onChange={handleChange} 
-                    icon={<DollarSign size={14} />} 
+                    icon={getCurrencyIcon()} 
                     placeholder="0.00"
                     error={errors.CF}
                   />
@@ -224,7 +229,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     name="TxF" 
                     value={inputs.TxF} 
                     onChange={handleChange} 
-                    icon={<DollarSign size={14} />} 
+                    icon={getCurrencyIcon()} 
                     placeholder="Gateway"
                     error={errors.TxF}
                   />
@@ -269,7 +274,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     name="PVS" 
                     value={inputs.PVS} 
                     onChange={handleChange} 
-                    icon={<DollarSign size={14} />} 
+                    icon={getCurrencyIcon()} 
                     placeholder="Valor para cliente"
                     highlight
                     error={errors.PVS}
@@ -309,7 +314,6 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                       <input
                         type="number"
                         name="MLL_D"
-                        // Mostra vazio se for undefined ou null
                         value={inputs.MLL_D ?? ''}
                         onChange={handleChange}
                         className={`block w-full rounded-lg border pl-3 pr-10 py-2.5 font-bold focus:ring-4 outline-none sm:text-sm bg-white dark:bg-slate-950 transition-shadow group-hover:border-indigo-300 dark:group-hover:border-indigo-700

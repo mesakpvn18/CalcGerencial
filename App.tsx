@@ -6,7 +6,7 @@ import InputSection from './components/InputSection';
 import ResultsSection from './components/ResultsSection';
 import HistoryModal from './components/HistoryModal';
 import EducationalGuide from './components/EducationalGuide';
-import { DollarSign, Moon, Sun, Clock, Share2, Check, BookOpen, DownloadCloud } from 'lucide-react';
+import { DollarSign, Moon, Sun, Clock, Share2, Check, BookOpen, DownloadCloud, Globe } from 'lucide-react';
 
 const DEFAULT_INPUTS: FinancialInputs = {
   CP: 25.00,
@@ -36,6 +36,9 @@ function App() {
     return false;
   });
 
+  // Currency State
+  const [currency, setCurrency] = useState<string>('BRL');
+
   // History State
   const [history, setHistory] = useState<HistoryItem[]>(() => {
     if (typeof window !== 'undefined') {
@@ -44,7 +47,6 @@ function App() {
         const parsed = saved && saved !== "undefined" ? JSON.parse(saved) : [];
         return Array.isArray(parsed) ? parsed.slice(0, MAX_HISTORY_ITEMS) : [];
       } catch (e) {
-        console.warn("Histórico corrompido ou inexistente, iniciando vazio.");
         return [];
       }
     }
@@ -114,9 +116,7 @@ function App() {
         document.documentElement.classList.remove('dark');
         localStorage.setItem('theme', 'light');
       }
-    } catch (e) {
-      // Ignora erro se localStorage estiver bloqueado
-    }
+    } catch (e) {}
   }, [isDarkMode]);
 
   // PWA Install Prompt Listener
@@ -152,7 +152,7 @@ function App() {
       console.error("Erro crítico no cálculo:", e);
     }
 
-    // 2. Secundário: Tentar atualizar URL (Falha silenciosa em ambientes restritos/blob)
+    // 2. Secundário: Tentar atualizar URL
     try {
       if (typeof window !== 'undefined' && window.location.protocol === 'blob:') {
         return;
@@ -168,9 +168,7 @@ function App() {
       
       const newUrl = `${window.location.pathname}?${params.toString()}`;
       window.history.replaceState({}, '', newUrl);
-    } catch (e) {
-      // Ignora erro
-    }
+    } catch (e) {}
   }, [inputs, mode]);
 
   // Handlers
@@ -239,7 +237,8 @@ function App() {
         timestamp: Date.now(),
         mode,
         inputs: { ...inputs },
-        result: { ...result }
+        result: { ...result },
+        currency: currency 
       };
       
       setHistory(prev => {
@@ -252,6 +251,7 @@ function App() {
   const handleLoadHistory = (item: HistoryItem) => {
     setInputs(item.inputs);
     setMode(item.mode);
+    if(item.currency) setCurrency(item.currency);
   };
 
   const handleDeleteHistory = (id: string) => {
@@ -273,6 +273,23 @@ function App() {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+             {/* Currency Toggle */}
+             <div className="hidden sm:flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1 mr-2">
+                {['BRL', 'USD', 'EUR'].map((curr) => (
+                  <button
+                    key={curr}
+                    onClick={() => setCurrency(curr)}
+                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+                      currency === curr 
+                        ? 'bg-white dark:bg-slate-600 text-[#1C3A5B] dark:text-white shadow-sm' 
+                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    {curr === 'BRL' ? 'R$' : curr === 'USD' ? '$' : '€'}
+                  </button>
+                ))}
+             </div>
+
              {deferredPrompt && (
                <button
                  onClick={handleInstallClick}
@@ -280,7 +297,7 @@ function App() {
                  title="Instalar Aplicativo"
                >
                  <DownloadCloud size={20} />
-                 <span className="hidden sm:inline text-xs font-bold">Instalar App</span>
+                 <span className="hidden sm:inline text-xs font-bold">Instalar</span>
                </button>
              )}
 
@@ -298,7 +315,7 @@ function App() {
              <button
               onClick={handleShare}
               className={`p-2 rounded-lg transition-all flex items-center gap-2 text-xs font-bold ${isCopied ? 'bg-emerald-100 text-emerald-700' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}
-              title="Copiar Link do Cenário"
+              title="Copiar Link"
              >
                {isCopied ? <Check size={18} /> : <Share2 size={18} />}
                <span className="hidden sm:inline">{isCopied ? 'Copiado!' : 'Compartilhar'}</span>
@@ -307,15 +324,13 @@ function App() {
              <button
               onClick={() => setIsHistoryOpen(true)}
               className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors relative"
-              title="Histórico de Cálculos"
+              title="Histórico"
              >
                <Clock size={20} />
                {history.length > 0 && (
                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-slate-900"></span>
                )}
              </button>
-             
-             <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-1"></div>
              
              <button 
               onClick={() => setIsDarkMode(!isDarkMode)}
@@ -340,6 +355,7 @@ function App() {
                mode={mode} 
                setMode={setMode} 
                onReset={handleReset}
+               currency={currency}
              />
           </div>
 
@@ -352,6 +368,7 @@ function App() {
                 mode={mode}
                 onSaveHistory={handleSaveHistory}
                 isDarkMode={isDarkMode}
+                currency={currency}
               />
             ) : (
               <div className="h-96 flex items-center justify-center text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 transition-colors">

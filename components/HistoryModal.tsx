@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HistoryItem, CalculationMode } from '../types';
 import { X, Clock, ArrowRight, Trash2, Calculator, Target, BarChart2 } from 'lucide-react';
@@ -88,7 +89,7 @@ const HistoryModal: React.FC<Props> = ({ isOpen, onClose, history, onLoad, onDel
                     <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
                       <span className="text-[10px] text-slate-400 block">Lucro Líquido</span>
                       <span className={`font-bold text-sm ${item.result.LL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-                        {formatCurrency(item.result.LL)}
+                        {formatCurrency(item.result.LL, item.currency || 'BRL')}
                       </span>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">

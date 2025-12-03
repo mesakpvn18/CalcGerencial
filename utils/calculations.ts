@@ -99,17 +99,15 @@ export const calculateFinancials = (
   const CAC = calculatedMeta > 0 ? (Marketing || 0) / calculatedMeta : 0;
   
   // LTV: PVS / Churn% (Simplified for subscription)
-  // Lifetime Calculation based on Churn
   const churnDecimal = (Churn || 0) / 100;
-  
-  // Se Churn > 0, Lifetime = 1 / Churn. Se Churn = 0, consideramos indefinido/infinito (usamos 0 no valor numérico para tratar na UI)
   const Lifetime = churnDecimal > 0 ? 1 / churnDecimal : 0;
-
-  // LTV Calculation
   const LTV = churnDecimal > 0 ? calculatedPVS / churnDecimal : (calculatedPVS * 12); // Fallback to 12 months if churn 0
 
+  // Payback: CAC / Margem Contribuição (Meses para recuperar o custo de aquisição)
+  // Quantas vendas/mensalidades são necessárias para pagar o CAC
+  const Payback = (CAC > 0 && MC_Real > 0) ? CAC / MC_Real : 0;
+
   // ROI: (Net Profit / Total Investment) * 100
-  // Total Investment = Total Variable Costs + Total Fixed Costs (including marketing)
   const TotalCosts = (CV_UN * calculatedMeta) + TotalFixedCosts;
   const ROI = TotalCosts > 0 ? (LL / TotalCosts) * 100 : 0;
 
@@ -131,6 +129,7 @@ export const calculateFinancials = (
     CAC,
     LTV,
     Lifetime,
+    Payback,
     ROI,
     LTV_CAC_Ratio,
     isValid: true,
@@ -154,14 +153,15 @@ const getEmptyResult = (errorMsg: string): CalculationResult => ({
   CAC: 0,
   LTV: 0,
   Lifetime: 0,
+  Payback: 0,
   ROI: 0,
   LTV_CAC_Ratio: 0,
   isValid: false,
   error: errorMsg
 });
 
-export const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+export const formatCurrency = (value: number, currency: string = 'BRL') => {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currency }).format(value);
 };
 
 export const formatPercent = (value: number) => {
