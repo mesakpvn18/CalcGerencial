@@ -1,7 +1,8 @@
 {
   "name": "FinCalc Digital",
   "short_name": "FinCalc",
-  "start_url": "./",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1C3A5B",
