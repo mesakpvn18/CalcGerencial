@@ -93,7 +93,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
               {showTemplates && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setShowTemplates(false)}></div>
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-20 overflow-hidden animate-pulse duration-200">
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     <div className="p-2 space-y-1">
                       <button onClick={() => loadTemplate('saas')} className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2"><Zap size={14} className="text-blue-500"/> SaaS / Assinatura</button>
                       <button onClick={() => loadTemplate('infoproduto')} className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2"><Zap size={14} className="text-purple-500"/> Infoproduto / Curso</button>

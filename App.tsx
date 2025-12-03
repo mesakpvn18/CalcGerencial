@@ -504,7 +504,7 @@ function App() {
       <AuthModal 
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
-        onLoginSuccess={(u) => { setUser(u); loadCloudHistory(u.id); }}
+        onLoginSuccess={(u) => { setUser(u); loadCloudHistory(u.id); setIsPro(!!u.is_pro); }}
         language={language}
       />
 

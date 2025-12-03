@@ -21,6 +21,7 @@ interface Props {
   language: Language;
   user: any; 
   onOpenAuth: () => void;
+  // NOVOS PROPS
   isPro?: boolean;
   onOpenUpgrade?: () => void;
 }
@@ -30,12 +31,14 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  
   const [priceSensitivity, setPriceSensitivity] = useState(0);
   
   const t = translations[language];
   const fmtCurrency = (val: number) => formatCurrency(val, currency, language);
   const fmtPercent = (val: number) => formatPercent(val, language);
 
+  // --- LÓGICA DE SIMULAÇÃO GLOBAL ---
   const { effectiveResult, effectiveInputs, isSimulating } = useMemo(() => {
     if (priceSensitivity === 0) {
       return { effectiveResult: initialResult, effectiveInputs: initialInputs, isSimulating: false };

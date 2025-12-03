@@ -24,6 +24,7 @@ const initClient = () => {
     }
   } catch (e) {}
 
+  // Fallback
   if (url === PLACEHOLDER_URL || key === PLACEHOLDER_KEY) {
     try {
       // @ts-ignore
@@ -80,6 +81,25 @@ export const signIn = async (email: string, pass: string) => {
   if (!supabase) throw new Error("Banco de dados não conectado.");
   const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
   if (error) throw error;
+
+  // Se o login for bem sucedido, buscamos o perfil imediatamente
+  if (data.user) {
+    const profile = await getUserProfile(data.user.id);
+    
+    // --- ADMIN BYPASS PARA TESTES ---
+    // Se o email for admin@fincalc.com, forçamos is_pro = true
+    const isMockAdmin = email === 'admin@fincalc.com';
+    
+    return { 
+      ...data, 
+      user: { 
+        ...data.user, 
+        ...profile, 
+        is_pro: isMockAdmin ? true : profile?.is_pro 
+      } 
+    };
+  }
+
   return data;
 };
 
@@ -89,6 +109,9 @@ export const signOut = async () => {
 };
 
 // --- PROFILE FUNCTIONS ---
+
+// Lembre-se de rodar o SQL no painel do Supabase para criar a tabela 'profiles'
+// com a coluna 'is_pro' boolean default false.
 
 const createProfile = async (userId: string, email: string) => {
   if (!supabase) return;
@@ -114,6 +137,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
 
 export const upgradeUserToPro = async (userId: string) => {
   if (!supabase) return;
+  // Simulação de upgrade.
   const { error } = await supabase
     .from('profiles')
     .update({ is_pro: true })
@@ -127,7 +151,15 @@ export const getUser = async () => {
   const { data } = await supabase.auth.getUser();
   if (data.user) {
     const profile = await getUserProfile(data.user.id);
-    return { ...data.user, ...profile };
+    
+    // --- ADMIN BYPASS PARA TESTES (Sessão Persistente) ---
+    const isMockAdmin = data.user.email === 'admin@fincalc.com';
+
+    return { 
+      ...data.user, 
+      ...profile,
+      is_pro: isMockAdmin ? true : profile?.is_pro
+    };
   }
   return null;
 };
