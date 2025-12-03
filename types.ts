@@ -1,4 +1,6 @@
 
+export type Language = 'pt' | 'en';
+
 export enum CalculationMode {
   DIRECT = 'DIRECT',
   TARGET_PRICE = 'TARGET_PRICE',
@@ -52,5 +54,6 @@ export interface HistoryItem {
   mode: CalculationMode;
   inputs: FinancialInputs;
   result: CalculationResult;
-  currency?: string; // Novo: Salvar a moeda do contexto
+  currency?: string; 
+  language?: Language;
 }

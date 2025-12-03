@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { HistoryItem, CalculationMode } from '../types';
+import { HistoryItem, CalculationMode, Language } from '../types';
 import { X, Clock, ArrowRight, Trash2, Calculator, Target, BarChart2 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/calculations';
+import { translations } from '../utils/translations';
 
 interface Props {
   isOpen: boolean;
@@ -11,10 +12,12 @@ interface Props {
   onLoad: (item: HistoryItem) => void;
   onDelete: (id: string) => void;
   onClearAll: () => void;
+  language: Language;
 }
 
-const HistoryModal: React.FC<Props> = ({ isOpen, onClose, history, onLoad, onDelete, onClearAll }) => {
+const HistoryModal: React.FC<Props> = ({ isOpen, onClose, history, onLoad, onDelete, onClearAll, language }) => {
   if (!isOpen) return null;
+  const t = translations[language];
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
@@ -31,7 +34,7 @@ const HistoryModal: React.FC<Props> = ({ isOpen, onClose, history, onLoad, onDel
           <div>
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <Clock className="text-[#1C3A5B] dark:text-blue-400" size={20} />
-              Histórico de Cálculos
+              {t.app.history}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               {history.length} simulações salvas
@@ -68,11 +71,10 @@ const HistoryModal: React.FC<Props> = ({ isOpen, onClose, history, onLoad, onDel
                       </span>
                       <div>
                          <p className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">
-                           {item.mode === CalculationMode.DIRECT ? 'Modo Direto' : 
-                            item.mode === CalculationMode.TARGET_PRICE ? 'Meta de Preço' : 'Meta de Volume'}
+                           {item.mode}
                          </p>
                          <p className="text-[10px] text-slate-400">
-                           {new Date(item.timestamp).toLocaleString('pt-BR')}
+                           {new Date(item.timestamp).toLocaleString(language === 'pt' ? 'pt-BR' : 'en-US')}
                          </p>
                       </div>
                     </div>
@@ -87,15 +89,15 @@ const HistoryModal: React.FC<Props> = ({ isOpen, onClose, history, onLoad, onDel
 
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
-                      <span className="text-[10px] text-slate-400 block">Lucro Líquido</span>
+                      <span className="text-[10px] text-slate-400 block">{t.results.kpi.ll}</span>
                       <span className={`font-bold text-sm ${item.result.LL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-                        {formatCurrency(item.result.LL, item.currency || 'BRL')}
+                        {formatCurrency(item.result.LL, item.currency || 'BRL', language)}
                       </span>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
                       <span className="text-[10px] text-slate-400 block">Margem</span>
                       <span className="font-bold text-sm text-slate-700 dark:text-slate-200">
-                        {formatPercent(item.result.MLL_Real)}
+                        {formatPercent(item.result.MLL_Real, language)}
                       </span>
                     </div>
                   </div>
@@ -104,7 +106,7 @@ const HistoryModal: React.FC<Props> = ({ isOpen, onClose, history, onLoad, onDel
                     onClick={() => { onLoad(item); onClose(); }}
                     className="w-full py-2 bg-[#1C3A5B] dark:bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-800 dark:hover:bg-blue-500 transition-colors flex items-center justify-center gap-2"
                   >
-                    Carregar Simulação <ArrowRight size={12} />
+                    Carregar <ArrowRight size={12} />
                   </button>
                 </div>
               ))}
@@ -118,7 +120,7 @@ const HistoryModal: React.FC<Props> = ({ isOpen, onClose, history, onLoad, onDel
               onClick={onClearAll}
               className="w-full py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-xs font-bold transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-900/30"
             >
-              Limpar Todo o Histórico
+              Limpar Tudo
             </button>
           </div>
         )}

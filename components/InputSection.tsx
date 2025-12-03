@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { FinancialInputs, CalculationMode } from '../types';
+import { FinancialInputs, CalculationMode, Language } from '../types';
 import { Calculator, Target, BarChart2, Info, DollarSign, Percent, Hash, Briefcase, RotateCcw, AlertCircle, TrendingDown, Megaphone, FolderOpen, Zap, Euro } from 'lucide-react';
+import { translations } from '../utils/translations';
 
 interface Props {
   inputs: FinancialInputs;
@@ -10,15 +11,19 @@ interface Props {
   setMode: (mode: CalculationMode) => void;
   onReset: () => void;
   currency: string;
+  language: Language;
 }
 
-const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onReset, currency }) => {
+const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onReset, currency, language }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showTemplates, setShowTemplates] = useState(false);
+  
+  const t = translations[language];
 
+  // Dynamic currency symbol for inputs
   const getCurrencyIcon = () => {
     if (currency === 'EUR') return <Euro size={14} />;
-    return <DollarSign size={14} />;
+    return <span className="text-xs font-bold text-slate-400 w-3.5 text-center">{currency === 'BRL' ? 'R$' : '$'}</span>;
   };
 
   const validateField = (name: string, value: number) => {
@@ -29,12 +34,12 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
     }
     
     if (value < 0) {
-       error = 'O valor não pode ser negativo';
+       error = t.inputs.errors.negative;
     }
 
-    if (name === 'TxP' && value > 100) error = 'A taxa não pode exceder 100%';
-    if (name === 'MLL_D' && value >= 100) error = 'A margem deve ser menor que 100%';
-    if (name === 'Churn' && value > 100) error = 'Churn não pode exceder 100%';
+    if (name === 'TxP' && value > 100) error = t.inputs.errors.max100;
+    if (name === 'MLL_D' && value >= 100) error = t.inputs.errors.max100;
+    if (name === 'Churn' && value > 100) error = t.inputs.errors.max100;
 
     return error;
   };
@@ -63,13 +68,13 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
     switch(type) {
       case 'saas':
         template = {
-          CP: 0, // Software tem custo marginal zero
-          CF: 3500, // Servidores + Equipe
-          TxF: 0.50, // Gateway
-          TxP: 3.99, // Taxa %
+          CP: 0,
+          CF: 3500,
+          TxF: 0.50,
+          TxP: 3.99,
           Marketing: 2000,
-          Churn: 5.0, // Churn aceitável B2C
-          PVS: 49.90, // Assinatura mensal
+          Churn: 5.0,
+          PVS: 49.90,
           Meta: 300,
           MLL_D: 30
         };
@@ -77,11 +82,11 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
       case 'infoproduto':
         template = {
           CP: 0,
-          CF: 1000, // Ferramentas
-          TxF: 2.00, // Hotmart/Eduzz (exemplo)
-          TxP: 9.90, // Taxa plataforma
-          Marketing: 5000, // Tráfego pago pesado
-          Churn: 2.0, // Reembolso
+          CF: 1000,
+          TxF: 2.00,
+          TxP: 9.90,
+          Marketing: 5000,
+          Churn: 2.0,
           PVS: 197.00,
           Meta: 100,
           MLL_D: 40
@@ -89,12 +94,12 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
         break;
       case 'ecommerce':
         template = {
-          CP: 45.00, // Custo da mercadoria
+          CP: 45.00,
           CF: 2000,
           TxF: 0.00,
-          TxP: 12.00, // Taxas Marketplace + Imposto Simples
+          TxP: 12.00,
           Marketing: 1500,
-          Churn: 0, // Não se aplica tanto
+          Churn: 0,
           PVS: 129.90,
           Meta: 150,
           MLL_D: 15
@@ -129,7 +134,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-[#333333] dark:text-slate-100 flex items-center gap-2">
             <Briefcase className="text-[#1C3A5B] dark:text-blue-400" size={20} />
-            Parâmetros
+            {t.inputs.title}
           </h2>
           
           <div className="flex items-center gap-2">
@@ -139,7 +144,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 rounded-lg text-xs font-bold transition-colors"
                 title="Carregar cenários prontos"
               >
-                <FolderOpen size={14} /> <span className="hidden sm:inline">Modelos</span>
+                <FolderOpen size={14} /> <span className="hidden sm:inline">{t.inputs.templates}</span>
               </button>
               
               {showTemplates && (
@@ -164,7 +169,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
 
             <button 
               onClick={onReset}
-              title="Limpar campos"
+              title={t.inputs.clear}
               className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-700 p-2 rounded-lg transition-all active:scale-95"
             >
               <RotateCcw size={16} />
@@ -173,9 +178,9 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
         </div>
         
         <div className="bg-slate-200/50 dark:bg-slate-900/50 p-1.5 rounded-xl flex gap-1">
-          <ModeButton targetMode={CalculationMode.DIRECT} icon={Calculator} label="Direto" />
-          <ModeButton targetMode={CalculationMode.TARGET_PRICE} icon={Target} label="Preço" />
-          <ModeButton targetMode={CalculationMode.TARGET_VOLUME} icon={BarChart2} label="Meta" />
+          <ModeButton targetMode={CalculationMode.DIRECT} icon={Calculator} label={t.inputs.modes.direct} />
+          <ModeButton targetMode={CalculationMode.TARGET_PRICE} icon={Target} label={t.inputs.modes.price} />
+          <ModeButton targetMode={CalculationMode.TARGET_VOLUME} icon={BarChart2} label={t.inputs.modes.meta} />
         </div>
       </div>
 
@@ -185,9 +190,9 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
         <div className="bg-blue-50 dark:bg-blue-900/20 text-[#1C3A5B] dark:text-blue-300 p-3 rounded-lg text-xs border border-blue-100 dark:border-blue-800 mb-6 flex gap-2 items-start shadow-sm">
           <Info size={14} className="mt-0.5 flex-shrink-0" />
           <p>
-            {mode === CalculationMode.DIRECT && "Simule o resultado financeiro baseado no preço e volume atuais."}
-            {mode === CalculationMode.TARGET_PRICE && "Calcule o preço ideal (PVS) para atingir sua meta de lucro."}
-            {mode === CalculationMode.TARGET_VOLUME && "Calcule quantas vendas são necessárias para sua meta de lucro."}
+            {mode === CalculationMode.DIRECT && t.inputs.context.direct}
+            {mode === CalculationMode.TARGET_PRICE && t.inputs.context.price}
+            {mode === CalculationMode.TARGET_VOLUME && t.inputs.context.meta}
           </p>
         </div>
 
@@ -197,14 +202,14 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
           <section>
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
               <span className="w-full h-px bg-slate-200 dark:bg-slate-700"></span>
-              Custos e Despesas
+              {t.inputs.sections.costs}
               <span className="w-full h-px bg-slate-200 dark:bg-slate-700"></span>
             </h3>
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                  <InputGroup 
-                    label="Custo Produto (CP)" 
+                    label={t.inputs.labels.cp} 
                     name="CP" 
                     value={inputs.CP} 
                     onChange={handleChange} 
@@ -213,7 +218,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     error={errors.CP}
                   />
                   <InputGroup 
-                    label="Custo Fixo (CF)" 
+                    label={t.inputs.labels.cf} 
                     name="CF" 
                     value={inputs.CF} 
                     onChange={handleChange} 
@@ -225,21 +230,21 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
 
               <div className="grid grid-cols-2 gap-4">
                  <InputGroup 
-                    label="Taxa Fixa (TxF)" 
+                    label={t.inputs.labels.txf} 
                     name="TxF" 
                     value={inputs.TxF} 
                     onChange={handleChange} 
                     icon={getCurrencyIcon()} 
-                    placeholder="Gateway"
+                    placeholder={t.inputs.placeholders.gateway}
                     error={errors.TxF}
                   />
                   <InputGroup 
-                    label="Taxa % (TxP)" 
+                    label={t.inputs.labels.txp} 
                     name="TxP" 
                     value={inputs.TxP} 
                     onChange={handleChange} 
                     icon={<Percent size={14} />} 
-                    placeholder="Imposto"
+                    placeholder={t.inputs.placeholders.tax}
                     isPercentage
                     error={errors.TxP}
                   />
@@ -247,12 +252,12 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
 
               <div className="grid grid-cols-1 gap-4">
                  <InputGroup 
-                    label="Marketing Invest. (Mensal)" 
+                    label={t.inputs.labels.marketing} 
                     name="Marketing" 
                     value={inputs.Marketing} 
                     onChange={handleChange} 
                     icon={<Megaphone size={14} />} 
-                    placeholder="Ads/Divulgação"
+                    placeholder={t.inputs.placeholders.ads}
                     error={errors.Marketing}
                   />
               </div>
@@ -263,19 +268,19 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
           <section>
              <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
               <span className="w-full h-px bg-slate-200 dark:bg-slate-700"></span>
-              Cenário e Vendas
+              {t.inputs.sections.scenario}
               <span className="w-full h-px bg-slate-200 dark:bg-slate-700"></span>
             </h3>
 
             <div className="space-y-4">
                {mode !== CalculationMode.TARGET_PRICE && (
                   <InputGroup 
-                    label="Preço Venda (PVS)" 
+                    label={t.inputs.labels.pvs} 
                     name="PVS" 
                     value={inputs.PVS} 
                     onChange={handleChange} 
                     icon={getCurrencyIcon()} 
-                    placeholder="Valor para cliente"
+                    placeholder={t.inputs.placeholders.price}
                     highlight
                     error={errors.PVS}
                   />
@@ -283,24 +288,24 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
 
                {mode !== CalculationMode.TARGET_VOLUME && (
                   <InputGroup 
-                    label="Meta de Vendas (Qtd)" 
+                    label={t.inputs.labels.meta} 
                     name="Meta" 
                     value={inputs.Meta} 
                     onChange={handleChange} 
                     icon={<Hash size={14} />} 
-                    placeholder="Unidades/mês"
+                    placeholder={t.inputs.placeholders.units}
                     highlight
                     error={errors.Meta}
                   />
                )}
 
                <InputGroup 
-                    label="Churn (Cancelamento)" 
+                    label={t.inputs.labels.churn} 
                     name="Churn" 
                     value={inputs.Churn} 
                     onChange={handleChange} 
                     icon={<TrendingDown size={14} />} 
-                    placeholder="Taxa % mensal"
+                    placeholder={t.inputs.placeholders.percent}
                     isPercentage
                     error={errors.Churn}
                />
@@ -308,7 +313,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                {mode !== CalculationMode.DIRECT && (
                   <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-indigo-100 dark:border-indigo-900 transition-all hover:shadow-md shadow-sm">
                      <label className="block text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-2 flex items-center justify-between">
-                       <span className="flex items-center gap-1.5"><Target size={14} className="text-indigo-600 dark:text-indigo-400"/> Margem Líquida Desejada</span>
+                       <span className="flex items-center gap-1.5"><Target size={14} className="text-indigo-600 dark:text-indigo-400"/> {t.inputs.labels.mll_d}</span>
                      </label>
                      <div className="relative group">
                       <input
@@ -320,7 +325,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                         ${errors.MLL_D 
                           ? 'border-red-300 text-red-600 focus:border-red-500 focus:ring-red-200' 
                           : 'border-indigo-200 dark:border-indigo-900 text-[#333333] dark:text-slate-100 focus:border-[#1C3A5B] dark:focus:border-blue-500 focus:ring-[#1C3A5B]/10 dark:focus:ring-blue-500/20'}`}
-                        placeholder="Ex: 20"
+                        placeholder={t.inputs.placeholders.margin_ex}
                       />
                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                         <span className="text-indigo-400 text-sm font-bold">%</span>
@@ -328,7 +333,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     </div>
                      {errors.MLL_D && <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={10} /> {errors.MLL_D}</p>}
                      {!errors.MLL_D && <p className="text-[10px] text-indigo-600/80 dark:text-indigo-400/80 mt-2 leading-tight">
-                       Porcentagem do faturamento que deve sobrar como lucro limpo.
+                       {t.inputs.hints.margin}
                      </p>}
                   </div>
                )}
@@ -338,7 +343,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
       </div>
       
       <div className="p-4 bg-[#F0F4F8] dark:bg-slate-800 border-t border-slate-200/60 dark:border-slate-700 text-[10px] text-center text-slate-400 dark:text-slate-500 transition-colors">
-        Preencha os campos para calcular automaticamente
+        {t.inputs.hints.fill}
       </div>
     </div>
   );
