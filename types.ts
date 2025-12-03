@@ -56,4 +56,5 @@ export interface HistoryItem {
   result: CalculationResult;
   currency?: string; 
   language?: Language;
+  isCloud?: boolean;
 }

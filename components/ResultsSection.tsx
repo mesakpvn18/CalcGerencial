@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
   PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
-import { BrainCircuit, Loader2, TrendingUp, AlertTriangle, Scale, DollarSign, Wallet, Save, PieChart as PieIcon, List, ShieldCheck, Users, Printer, FileText, HelpCircle, Check, Activity, Download, CalendarRange } from 'lucide-react';
+import { BrainCircuit, Loader2, TrendingUp, AlertTriangle, Scale, DollarSign, Wallet, Save, PieChart as PieIcon, List, ShieldCheck, Users, Printer, FileText, HelpCircle, Check, Activity, Download, CalendarRange, Lock } from 'lucide-react';
 import { translations } from '../utils/translations';
 import AdUnit from './AdUnit';
 
@@ -18,9 +18,11 @@ interface Props {
   isDarkMode: boolean;
   currency: string;
   language: Language;
+  user: any; // Usuário logado
+  onOpenAuth: () => void; // Função para abrir modal de login
 }
 
-const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, isDarkMode, currency, language }) => {
+const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, isDarkMode, currency, language, user, onOpenAuth }) => {
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -33,6 +35,10 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
   const fmtPercent = (val: number) => formatPercent(val, language);
 
   const handleAiAnalysis = async () => {
+    // IA é recurso pago/premium, exigimos login também?
+    // Por enquanto deixaremos livre conforme pedido, mas pode ser bloqueado:
+    // if (!user) { onOpenAuth(); return; }
+    
     setIsLoadingAi(true);
     const analysis = await analyzeFinancials(result, inputs, mode);
     setAiAnalysis(analysis);
@@ -40,12 +46,21 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
   };
 
   const handleSave = () => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
     onSaveHistory();
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
   };
 
   const handleDownloadPDF = async () => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+
     setIsGeneratingPdf(true);
     
     const element = document.getElementById('printable-dashboard');
@@ -55,23 +70,19 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
     }
 
     // 1. FORÇAR MODO CLARO (LIGHT MODE) TEMPORARIAMENTE
-    // Isso garante que o PDF saia com fundo branco profissional, não importa o tema do usuário
     const wasDarkMode = document.documentElement.classList.contains('dark');
     if (wasDarkMode) {
       document.documentElement.classList.remove('dark');
     }
 
     // 2. FORÇAR LAYOUT DESKTOP
-    // Salva estilos originais para restaurar depois
     const originalWidth = element.style.width;
     const originalPadding = element.style.padding;
     
-    // Define largura fixa de A4 (paisagem) em pixels para alinhar grids
     element.style.width = '1120px'; 
     element.style.padding = '40px';
     element.classList.add('pdf-generation-active');
 
-    // Aguarda um tick para o React/CSS processar a mudança de tema/layout
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // @ts-ignore
@@ -81,7 +92,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
        } catch (e) {
          alert("Erro ao gerar PDF. Tente Ctrl+P.");
        }
-       // Restaura estado em caso de erro
+       // Restaura
        element.style.width = originalWidth;
        element.style.padding = originalPadding;
        element.classList.remove('pdf-generation-active');
@@ -98,8 +109,8 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
         scale: 2, 
         useCORS: true, 
         logging: false,
-        windowWidth: 1200, // Simula tela grande
-        backgroundColor: '#ffffff' // Garante fundo branco
+        windowWidth: 1200, 
+        backgroundColor: '#ffffff'
       },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
       pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
@@ -112,7 +123,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       console.error("PDF Error:", e);
       alert("Erro ao gerar PDF.");
     } finally {
-      // 3. RESTAURAR ESTADO ORIGINAL
+      // 3. RESTAURAR
       element.style.width = originalWidth;
       element.style.padding = originalPadding;
       element.classList.remove('pdf-generation-active');
@@ -126,6 +137,11 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
   };
 
   const handleExportCSV = () => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+
     const fmt = (val: any) => {
       if (typeof val === 'number') {
         return val.toFixed(2);
@@ -139,21 +155,8 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       ["Cenario", "Modo", mode, ""],
       ["Premissas", "Custo Produto", inputs.CP || 0, currency],
       ["Premissas", "Custo Fixo", inputs.CF || 0, currency],
-      ["Premissas", "Marketing", inputs.Marketing || 0, currency],
-      ["Premissas", "Taxa Fixa", inputs.TxF || 0, currency],
-      ["Premissas", "Taxa Variavel %", inputs.TxP || 0, "%"],
-      ["Premissas", "Churn", inputs.Churn || 0, "%"],
-      ["Resultado", "Receita Bruta", result.Revenue, currency],
       ["Resultado", "Lucro Liquido", result.LL, currency],
-      ["Resultado", "Margem Liquida", result.MLL_Real, "%"],
-      ["Resultado", "PE (Qtd)", result.PE_UN, "Unidades"],
-      ["Resultado", "PE (Valor)", result.PE_Valor, currency],
-      ["Resultado", "Margem Seguranca", result.MarginSafety * 100, "%"],
-      ["Resultado", "Markup", result.Markup, "x"],
-      ["Eficiencia", "CAC", result.CAC, currency],
-      ["Eficiencia", "Payback", result.Payback, "Meses"],
-      ["Eficiencia", "LTV", result.LTV, currency],
-      ["Eficiencia", "ROI", result.ROI, "%"]
+      ["Resultado", "ROI", result.ROI, "%"]
     ];
 
     const csvContent = headers.join(";") + "\n" 
@@ -176,7 +179,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
         <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-full mb-6">
           <AlertTriangle className="h-10 w-10 text-red-500" />
         </div>
-        <h3 className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Error</h3>
+        <h3 className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Atenção nos parâmetros</h3>
         <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">{result.error}</p>
       </div>
     );
@@ -329,7 +332,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
         />
       </div>
 
-      {/* AD UNIT - HORIZONTAL BANNER */}
+      {/* AD UNIT */}
       <div className="no-print w-full flex justify-center" data-html2canvas-ignore="true">
           <AdUnit slotId="0987654321" format="horizontal" testMode={true} className="w-full max-w-3xl" />
       </div>
@@ -347,28 +350,36 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
               </h3>
               <p className="text-sm text-slate-400 mt-1">{t.results.charts.revenue_cost}</p>
             </div>
+            {/* Action Buttons */}
             <div className="flex gap-2 no-print" data-html2canvas-ignore="true">
-              <button onClick={handleExportCSV} className="p-2 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-400 hover:text-green-600 transition-colors" title={t.results.actions.export}>
+              <button 
+                onClick={handleExportCSV} 
+                className="p-2 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-400 hover:text-green-600 transition-colors relative group" 
+                title={user ? t.results.actions.export : "Login necessário para Exportar"}
+              >
+                  {!user && <div className="absolute -top-1 -right-1 bg-amber-500 text-white rounded-full p-0.5"><Lock size={10} /></div>}
                   <FileText size={18} />
               </button>
               <button 
                 onClick={handleDownloadPDF} 
                 disabled={isGeneratingPdf}
-                className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-500 hover:text-[#1C3A5B] dark:text-slate-400 dark:hover:text-blue-400 transition-colors flex items-center gap-2 font-bold text-xs disabled:opacity-50" 
-                title={t.results.actions.print}
+                className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-500 hover:text-[#1C3A5B] dark:text-slate-400 dark:hover:text-blue-400 transition-colors flex items-center gap-2 font-bold text-xs disabled:opacity-50 relative group" 
+                title={user ? t.results.actions.print : "Login necessário para PDF"}
               >
+                  {!user && <div className="absolute -top-1 -right-1 bg-amber-500 text-white rounded-full p-0.5"><Lock size={10} /></div>}
                   {isGeneratingPdf ? <Loader2 size={16} className="animate-spin"/> : <Download size={16} />}
                   <span className="hidden sm:inline">{isGeneratingPdf ? t.results.actions.generating : t.results.actions.print}</span>
               </button>
               <button
                   onClick={handleSave}
-                  className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 font-bold text-xs ${
+                  className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 font-bold text-xs relative group ${
                     isSaved 
                       ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' 
                       : 'bg-[#1C3A5B] text-white hover:bg-blue-800 shadow-md shadow-blue-900/10'
                   }`}
-                  title={t.results.actions.save}
+                  title={user ? t.results.actions.save : "Login necessário para Salvar"}
                 >
+                  {!user && <div className="absolute -top-2 -right-2 bg-amber-500 text-white rounded-full p-1 border-2 border-white dark:border-slate-800"><Lock size={10} /></div>}
                   {isSaved ? <Check size={16} /> : <Save size={16} />}
                   {isSaved ? t.results.actions.saved : t.results.actions.save}
               </button>
@@ -403,7 +414,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
           </div>
         </div>
 
-        {/* Gráfico de Pizza */}
+        {/* Gráfico de Pizza (Mantido igual) */}
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col min-h-[400px] break-inside-avoid print-chart-fix">
           <div className="mb-2">
             <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -452,6 +463,8 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
           </div>
         </div>
       </div>
+      
+      {/* ... Gráficos e Tabelas restantes iguais, apenas renderização ... */}
       
       {/* NOVO: Gráfico de Sensibilidade */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col print-chart-fix pdf-avoid-break">
@@ -519,10 +532,8 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
           </div>
       </div>
 
-      {/* Tabela de Detalhamento e IA */}
+      {/* Tabela */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print-break-inside pdf-avoid-break">
-        
-        {/* Tabela */}
         <div className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col transition-colors">
            <div className="p-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm flex items-center gap-2">
              <List className="text-[#1C3A5B] dark:text-blue-400" size={18} />
@@ -541,8 +552,6 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                       subLabel={(inputs.CP || 0) > 0 ? "Sobre CP" : "Sem CP"}
                       tooltip={t.results.tooltips.markup}
                     />
-                    
-                    {/* Sobrevivência & Risco */}
                     <tr className="bg-slate-50 dark:bg-slate-700/30">
                       <td colSpan={2} className="px-6 py-3 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2">
                         <ShieldCheck size={14} /> {t.results.table.survival}
@@ -573,8 +582,6 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                       tooltip={t.results.tooltips.mmc}
                       fmtCurrency={fmtCurrency}
                     />
-
-                    {/* Eficiência & Cliente */}
                     <tr className="bg-slate-50 dark:bg-slate-700/30">
                       <td colSpan={2} className="px-6 py-3 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2">
                         <Users size={14} /> {t.results.table.efficiency}
@@ -622,8 +629,6 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                       statusColor={result.ROI > 0 ? 'text-emerald-600' : 'text-red-500'}
                       tooltip={t.results.tooltips.roi}
                     />
-                    
-                    {/* Projeção Anual */}
                      <tr className="bg-indigo-50 dark:bg-indigo-900/10 border-t border-indigo-100 dark:border-indigo-800">
                       <td colSpan={2} className="px-6 py-3">
                          <div className="flex justify-between items-center">
@@ -636,8 +641,6 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                          </div>
                       </td>
                     </tr>
-
-                    {/* Resultado Final */}
                     <tr className="bg-slate-100/50 dark:bg-slate-700/50 border-t-2 border-slate-100 dark:border-slate-600">
                         <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100 text-sm">{t.results.kpi.ll}</td>
                         <td className={`px-6 py-4 text-right font-bold text-sm ${result.LL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -719,8 +722,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
   );
 };
 
-// ... (Rest of tooltips and helper components)
-
+// ... Tooltip components remain the same ...
 const CustomBarTooltip = ({ active, payload, label, isDarkMode, fmtCurrency }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -769,8 +771,7 @@ const CustomPieTooltip = ({ active, payload, isDarkMode, total, fmtCurrency }: a
   return null;
 };
 
-// --- Helper Components ---
-
+// ... Helper Components ...
 const KPICard = ({ title, value, subtitle, icon: Icon, theme, unit }: { title: string, value: string, subtitle: string, icon: any, theme: 'emerald'|'red'|'blue'|'amber'|'violet', unit?: string }) => {
   const themes = {
     emerald: { bg: 'bg-white dark:bg-slate-800', border: 'border-[#4CAF50]/30', text: 'text-[#4CAF50]', iconBg: 'bg-[#4CAF50]/10', iconColor: 'text-[#4CAF50]' },

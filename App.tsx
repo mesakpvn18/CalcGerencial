@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { FinancialInputs, CalculationMode, CalculationResult, HistoryItem, Language } from './types';
 import { calculateFinancials } from './utils/calculations';
@@ -7,8 +6,10 @@ import ResultsSection from './components/ResultsSection';
 import HistoryModal from './components/HistoryModal';
 import EducationalGuide from './components/EducationalGuide';
 import CurrencyTicker from './components/CurrencyTicker';
-import { Moon, Sun, Clock, Share2, Check, BookOpen, DownloadCloud, DollarSign, Globe } from 'lucide-react';
+import AuthModal from './components/AuthModal';
+import { Moon, Sun, Clock, Share2, Check, BookOpen, DownloadCloud, DollarSign, Globe, LogIn } from 'lucide-react';
 import { translations } from './utils/translations';
+import { getUser, signOut, saveSimulation, getSimulations, deleteSimulation } from './services/supabase';
 
 const DEFAULT_INPUTS: FinancialInputs = {
   CP: 25.00,
@@ -44,6 +45,10 @@ function App() {
 
   // Load translations based on current language
   const t = translations[language];
+
+  // Auth State
+  const [user, setUser] = useState<any>(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   // History State
   const [history, setHistory] = useState<HistoryItem[]>(() => {
@@ -108,6 +113,28 @@ function App() {
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
+  // Check User Session on Mount
+  useEffect(() => {
+    const checkUser = async () => {
+      const currentUser = await getUser();
+      if (currentUser) {
+        setUser(currentUser);
+        // Load cloud history
+        loadCloudHistory(currentUser.id);
+      }
+    };
+    checkUser();
+  }, []);
+
+  const loadCloudHistory = async (userId: string) => {
+    try {
+      const cloudData = await getSimulations(userId);
+      setHistory(cloudData);
+    } catch (e) {
+      console.error("Erro ao carregar histórico da nuvem", e);
+    }
+  };
+
   useEffect(() => {
     try {
       if (isDarkMode) {
@@ -129,16 +156,19 @@ function App() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  // Sync LocalStorage only if NOT logged in
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      try {
-        localStorage.setItem('calc_history', JSON.stringify(history));
-      } catch (e) {
-        console.warn("Não foi possível salvar histórico.");
-      }
-    }, 800); 
-    return () => clearTimeout(timeoutId);
-  }, [history]);
+    if (!user) {
+      const timeoutId = setTimeout(() => {
+        try {
+          localStorage.setItem('calc_history', JSON.stringify(history));
+        } catch (e) {
+          console.warn("Não foi possível salvar histórico local.");
+        }
+      }, 800); 
+      return () => clearTimeout(timeoutId);
+    }
+  }, [history, user]);
 
   useEffect(() => {
     try {
@@ -200,25 +230,36 @@ function App() {
     }
   };
 
-  const handleSaveHistory = () => {
+  const handleSaveHistory = async () => {
     if (result && result.isValid) {
-      let randomId = '';
-      try {
-        randomId = typeof crypto !== 'undefined' && crypto.randomUUID 
-          ? crypto.randomUUID() 
-          : Date.now().toString(36) + Math.random().toString(36).substring(2);
-      } catch {
-        randomId = Date.now().toString();
-      }
-      const newItem: HistoryItem = {
-        id: randomId,
+      let newItem: HistoryItem = {
+        id: Date.now().toString(), // Temp ID
         timestamp: Date.now(),
         mode,
         inputs: { ...inputs },
         result: { ...result },
         currency: currency,
-        language: language
+        language: language,
+        isCloud: !!user
       };
+
+      // Se logado, salva no Supabase
+      if (user) {
+        try {
+          const savedData = await saveSimulation(newItem, user.id);
+          if (savedData) {
+            newItem = { ...newItem, id: savedData.id, isCloud: true };
+          }
+        } catch (e) {
+          console.error("Erro ao salvar na nuvem:", e);
+          alert("Erro ao salvar na nuvem.");
+          newItem.isCloud = false;
+        }
+      } 
+      // Não salva localmente se não estiver logado (bloqueado na UI, mas proteção extra aqui)
+      // A UI deve impedir chegar aqui sem user, mas se chegar, salvamos localmente como fallback
+      // ou retornamos. Como a UI bloqueia, assumimos aqui a lógica de inserção no estado.
+
       setHistory(prev => {
         const updatedHistory = [newItem, ...prev];
         return updatedHistory.slice(0, MAX_HISTORY_ITEMS);
@@ -233,8 +274,21 @@ function App() {
     if(item.language) setLanguage(item.language);
   };
 
-  const handleDeleteHistory = (id: string) => {
+  const handleDeleteHistory = async (id: string) => {
+    if (user) {
+      try {
+        await deleteSimulation(id);
+      } catch (e) {
+        console.error("Erro ao deletar da nuvem", e);
+      }
+    }
     setHistory(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    setUser(null);
+    setHistory([]); // Limpa histórico da tela
   };
 
   return (
@@ -308,6 +362,19 @@ function App() {
                {history.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-slate-900"></span>}
              </button>
              
+             {/* User Auth Button */}
+             {user ? (
+               <div className="flex items-center gap-2">
+                 <button onClick={handleLogout} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors text-xs font-bold">
+                   Sair
+                 </button>
+               </div>
+             ) : (
+                <button onClick={() => setIsAuthOpen(true)} className="p-2 text-[#1C3A5B] hover:bg-blue-50 rounded-lg transition-colors" title="Entrar / Criar Conta">
+                  <LogIn size={20} />
+                </button>
+             )}
+
              <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title={isDarkMode ? "Modo Claro" : "Modo Escuro"}>
                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
              </button>
@@ -344,6 +411,8 @@ function App() {
                 isDarkMode={isDarkMode}
                 currency={currency}
                 language={language}
+                user={user}
+                onOpenAuth={() => setIsAuthOpen(true)}
               />
             ) : (
               <div className="h-96 flex items-center justify-center text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 transition-colors">
@@ -373,6 +442,13 @@ function App() {
       <EducationalGuide 
         isOpen={isGuideOpen}
         onClose={() => setIsGuideOpen(false)}
+        language={language}
+      />
+
+      <AuthModal 
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onLoginSuccess={(u) => { setUser(u); loadCloudHistory(u.id); }}
         language={language}
       />
     </div>
