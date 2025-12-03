@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { CalculationResult, FinancialInputs, CalculationMode, Language } from '../types';
 import { formatCurrency, formatPercent, calculateFinancials } from '../utils/calculations';
@@ -55,6 +54,26 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       return;
     }
 
+    // 1. FORÇAR MODO CLARO (LIGHT MODE) TEMPORARIAMENTE
+    // Isso garante que o PDF saia com fundo branco profissional, não importa o tema do usuário
+    const wasDarkMode = document.documentElement.classList.contains('dark');
+    if (wasDarkMode) {
+      document.documentElement.classList.remove('dark');
+    }
+
+    // 2. FORÇAR LAYOUT DESKTOP
+    // Salva estilos originais para restaurar depois
+    const originalWidth = element.style.width;
+    const originalPadding = element.style.padding;
+    
+    // Define largura fixa de A4 (paisagem) em pixels para alinhar grids
+    element.style.width = '1120px'; 
+    element.style.padding = '40px';
+    element.classList.add('pdf-generation-active');
+
+    // Aguarda um tick para o React/CSS processar a mudança de tema/layout
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // @ts-ignore
     if (typeof window.html2pdf === 'undefined') {
        try {
@@ -62,16 +81,28 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
        } catch (e) {
          alert("Erro ao gerar PDF. Tente Ctrl+P.");
        }
+       // Restaura estado em caso de erro
+       element.style.width = originalWidth;
+       element.style.padding = originalPadding;
+       element.classList.remove('pdf-generation-active');
+       if (wasDarkMode) document.documentElement.classList.add('dark');
        setIsGeneratingPdf(false);
        return;
     }
 
     const opt = {
-      margin:       [10, 10, 10, 10], 
+      margin:       [5, 5, 5, 5], 
       filename:     `FinCalc_Report_${new Date().toISOString().split('T')[0]}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, logging: false },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      image:        { type: 'jpeg', quality: 1 },
+      html2canvas:  { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false,
+        windowWidth: 1200, // Simula tela grande
+        backgroundColor: '#ffffff' // Garante fundo branco
+      },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
     try {
@@ -79,8 +110,17 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       await window.html2pdf().set(opt).from(element).save();
     } catch (e) {
       console.error("PDF Error:", e);
-      alert("Erro ao gerar PDF. Tente usar a impressão nativa (Ctrl+P).");
+      alert("Erro ao gerar PDF.");
     } finally {
+      // 3. RESTAURAR ESTADO ORIGINAL
+      element.style.width = originalWidth;
+      element.style.padding = originalPadding;
+      element.classList.remove('pdf-generation-active');
+      
+      if (wasDarkMode) {
+        document.documentElement.classList.add('dark');
+      }
+      
       setIsGeneratingPdf(false);
     }
   };
@@ -88,7 +128,6 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
   const handleExportCSV = () => {
     const fmt = (val: any) => {
       if (typeof val === 'number') {
-        // Formato CSV universal para Excel (US vs EU)
         return val.toFixed(2);
       }
       if (val === undefined || val === null) return '';
@@ -167,9 +206,9 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
   const contributionMargin = result.MC_Real > 0 ? result.MC_Real : 0; 
   
   const pieChartData = [
-    { name: t.inputs.labels.cp, value: productCost, color: isDarkMode ? '#64748b' : '#94a3b8' }, 
-    { name: 'Taxas', value: taxAmount, color: isDarkMode ? '#d97706' : '#f59e0b' }, 
-    { name: t.results.kpi.mc, value: contributionMargin, color: isDarkMode ? '#3b82f6' : '#1C3A5B' },
+    { name: t.inputs.labels.cp, value: productCost, color: (isDarkMode && !isGeneratingPdf) ? '#64748b' : '#94a3b8' }, 
+    { name: 'Taxas', value: taxAmount, color: (isDarkMode && !isGeneratingPdf) ? '#d97706' : '#f59e0b' }, 
+    { name: t.results.kpi.mc, value: contributionMargin, color: (isDarkMode && !isGeneratingPdf) ? '#3b82f6' : '#1C3A5B' },
   ];
 
   const activePieData = pieChartData.filter(d => d.value > 0);
@@ -258,7 +297,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       </div>
       
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print-break-inside">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print-break-inside pdf-avoid-break">
         <KPICard 
           title={t.results.kpi.ll} 
           value={fmtCurrency(result.LL)} 
@@ -291,12 +330,12 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       </div>
 
       {/* AD UNIT - HORIZONTAL BANNER */}
-      <div className="no-print w-full flex justify-center">
+      <div className="no-print w-full flex justify-center" data-html2canvas-ignore="true">
           <AdUnit slotId="0987654321" format="horizontal" testMode={true} className="w-full max-w-3xl" />
       </div>
 
       {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print-break-inside">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print-break-inside pdf-avoid-break">
         
         {/* Gráfico de Barras */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col min-h-[400px] print-chart-fix">
@@ -338,27 +377,27 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
           <div className="flex-1 w-full h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barSize={40}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode && !isGeneratingPdf ? "#334155" : "#f1f5f9"} />
                 <XAxis 
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12}} 
+                  tick={{fill: isDarkMode && !isGeneratingPdf ? '#94a3b8' : '#64748b', fontSize: 12}} 
                   dy={10} 
                 />
                 <YAxis 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fill: isDarkMode ? '#64748b' : '#64748b', fontSize: 11}} 
+                  tick={{fill: isDarkMode && !isGeneratingPdf ? '#64748b' : '#64748b', fontSize: 11}} 
                   tickFormatter={formatAxisValue}
                   width={45} 
                 />
-                <Tooltip content={<CustomBarTooltip isDarkMode={isDarkMode} fmtCurrency={fmtCurrency} />} cursor={{fill: isDarkMode ? '#1e293b' : '#f8fafc'}} />
+                <Tooltip content={<CustomBarTooltip isDarkMode={isDarkMode && !isGeneratingPdf} fmtCurrency={fmtCurrency} />} cursor={{fill: isDarkMode && !isGeneratingPdf ? '#1e293b' : '#f8fafc'}} />
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                <Bar dataKey="Receita" fill={isDarkMode ? "#3b82f6" : "#1C3A5B"} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Custos" fill={isDarkMode ? "#64748b" : "#94a3b8"} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Lucro" fill={result.LL >= 0 ? "#4CAF50" : "#E53935"} radius={[4, 4, 0, 0]} />
-                <ReferenceLine y={0} stroke={isDarkMode ? "#475569" : "#cbd5e1"} />
+                <Bar dataKey="Receita" fill={isDarkMode && !isGeneratingPdf ? "#3b82f6" : "#1C3A5B"} radius={[4, 4, 0, 0]} isAnimationActive={!isGeneratingPdf} />
+                <Bar dataKey="Custos" fill={isDarkMode && !isGeneratingPdf ? "#64748b" : "#94a3b8"} radius={[4, 4, 0, 0]} isAnimationActive={!isGeneratingPdf} />
+                <Bar dataKey="Lucro" fill={result.LL >= 0 ? "#4CAF50" : "#E53935"} radius={[4, 4, 0, 0]} isAnimationActive={!isGeneratingPdf} />
+                <ReferenceLine y={0} stroke={isDarkMode && !isGeneratingPdf ? "#475569" : "#cbd5e1"} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -385,14 +424,15 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                   outerRadius={90}
                   paddingAngle={2}
                   dataKey="value"
-                  stroke={isDarkMode ? '#1e293b' : '#ffffff'}
+                  stroke={isDarkMode && !isGeneratingPdf ? '#1e293b' : '#ffffff'}
                   strokeWidth={2}
+                  isAnimationActive={!isGeneratingPdf}
                 >
                   {activePieData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomPieTooltip isDarkMode={isDarkMode} total={result.PVS} fmtCurrency={fmtCurrency} />} />
+                <Tooltip content={<CustomPieTooltip isDarkMode={isDarkMode && !isGeneratingPdf} total={result.PVS} fmtCurrency={fmtCurrency} />} />
                 <Legend 
                   layout="horizontal" 
                   verticalAlign="bottom" 
@@ -414,7 +454,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       </div>
       
       {/* NOVO: Gráfico de Sensibilidade */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col print-chart-fix">
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col print-chart-fix pdf-avoid-break">
           <div className="mb-6">
             <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <Activity className="text-indigo-500" size={20} />
@@ -427,7 +467,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
           <div className="flex-1 w-full h-[300px]">
              <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={sensitivityData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
-                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
+                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode && !isGeneratingPdf ? "#334155" : "#f1f5f9"} />
                    <XAxis 
                      dataKey="price" 
                      tickFormatter={(val) => {
@@ -436,13 +476,13 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                        else if (currency === 'EUR') prefix = '€';
                        return `${prefix}${val.toFixed(0)}`;
                      }}
-                     tick={{fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 11}}
+                     tick={{fill: isDarkMode && !isGeneratingPdf ? '#94a3b8' : '#64748b', fontSize: 11}}
                      axisLine={false}
                      tickLine={false}
                    />
                    <YAxis 
                      tickFormatter={formatAxisValue}
-                     tick={{fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 11}}
+                     tick={{fill: isDarkMode && !isGeneratingPdf ? '#94a3b8' : '#64748b', fontSize: 11}}
                      axisLine={false}
                      tickLine={false}
                      width={50}
@@ -452,18 +492,18 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                          borderRadius: '12px', 
                          border: 'none', 
                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                         backgroundColor: isDarkMode ? '#1e293b' : '#fff',
-                         color: isDarkMode ? '#f8fafc' : '#334155'
+                         backgroundColor: isDarkMode && !isGeneratingPdf ? '#1e293b' : '#fff',
+                         color: isDarkMode && !isGeneratingPdf ? '#f8fafc' : '#334155'
                      }}
                      formatter={(value: number) => [fmtCurrency(value), t.results.kpi.ll]}
                      labelFormatter={(label) => `${t.results.kpi.sub.val_unit}: ${fmtCurrency(label as number)}`}
                    />
-                   <ReferenceLine x={result.PVS} stroke="#1C3A5B" strokeDasharray="3 3" label={{ value: 'Atual', position: 'top', fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 10 }} />
+                   <ReferenceLine x={result.PVS} stroke="#1C3A5B" strokeDasharray="3 3" label={{ value: 'Atual', position: 'top', fill: isDarkMode && !isGeneratingPdf ? '#94a3b8' : '#64748b', fontSize: 10 }} />
                    <ReferenceLine y={0} stroke="#E53935" strokeOpacity={0.5} />
                    <Line 
                      type="monotone" 
                      dataKey="lucro" 
-                     stroke={isDarkMode ? '#4CAF50' : '#4CAF50'} 
+                     stroke={isDarkMode && !isGeneratingPdf ? '#4CAF50' : '#4CAF50'} 
                      strokeWidth={3}
                      dot={(props: any) => {
                          if (props.payload.isCurrent) {
@@ -472,6 +512,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                          return <circle cx={props.cx} cy={props.cy} r={0} />;
                      }}
                      activeDot={{ r: 6 }}
+                     isAnimationActive={!isGeneratingPdf}
                    />
                 </LineChart>
              </ResponsiveContainer>
@@ -479,7 +520,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       </div>
 
       {/* Tabela de Detalhamento e IA */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print-break-inside">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print-break-inside pdf-avoid-break">
         
         {/* Tabela */}
         <div className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col transition-colors">
