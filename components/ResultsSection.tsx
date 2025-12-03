@@ -70,6 +70,7 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
         PE_UN: effectiveResult.PE_UN * periodMultiplier,
         LL: effectiveResult.LL * periodMultiplier,
         Revenue: effectiveResult.Revenue * periodMultiplier,
+        MarketingTotal: effectiveResult.MarketingTotal * periodMultiplier, // Multiplica o total monetário
         // MC_Real unitária não muda, nem PVS
      };
   }, [effectiveResult, periodMultiplier]);
@@ -78,7 +79,7 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
      return {
        ...effectiveInputs,
        CF: (effectiveInputs.CF || 0) * periodMultiplier,
-       Marketing: (effectiveInputs.Marketing || 0) * periodMultiplier,
+       // Marketing não deve ser multiplicado aqui se for percentual, usamos o MarketingTotal do resultado
      }
   }, [effectiveInputs, periodMultiplier]);
 
@@ -145,15 +146,28 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
   if (!effectiveResult.isValid) { return <div className="h-full flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-red-100 dark:border-red-900/30 text-center"><div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-full mb-6"><AlertTriangle className="h-10 w-10 text-red-500" /></div><h3 className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Atenção nos parâmetros</h3><p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">{effectiveResult.error}</p></div>; }
 
   // Recalcula totais para o gráfico usando valores multiplicados
-  const totalCostsWithMarketing = displayInputs.CF + displayInputs.Marketing + (displayResult.CV_UN * displayResult.PE_UN);
-  const totalCostsScenario = displayInputs.CF + displayInputs.Marketing + (displayResult.CV_UN * displayResult.Meta);
+  // Nota: CV_UN agora inclui marketing variável, então o total de custos variáveis é CV_UN * Qtd
+  // O MarketingTotal inclui tanto fixo quanto variável. Se usarmos CV_UN aqui, estaremos duplicando o marketing variável?
+  // Em calculation.ts, CV_UN inclui variável.
+  // TotalCosts em calculation.ts = (CV_UN * Q) + TotalFixedCosts (onde fixed costs inclui marketing fixo)
+  // Vamos recalcular aqui para garantir:
+  const totalCostsWithMarketing = displayInputs.CF + displayResult.MarketingTotal + (displayResult.CV_UN * displayResult.PE_UN); 
+  // Ops, se CV_UN inclui MKT Variável, e MarketingTotal inclui MKT Fixo e Variável, somar os dois duplica.
+  // Melhor usar a lógica limpa: Total Costs = Fixed Costs (sem MKT) + Variable Prod Costs + Total Marketing
+  // Mas vamos simplificar: Total Costs = Receita - Lucro
   
-  const barChartData = [ { name: t.results.kpi.pe, Receita: displayResult.PE_Valor, Custos: totalCostsWithMarketing, Lucro: 0 }, { name: 'Cenário', Receita: displayResult.Revenue, Custos: totalCostsScenario, Lucro: displayResult.LL } ];
+  const totalCostsScenario = displayResult.Revenue - displayResult.LL;
+  const totalCostsPE = displayResult.PE_Valor; // No PE, Lucro é 0, então Receita = Custos Totais
+
+  const barChartData = [ { name: t.results.kpi.pe, Receita: displayResult.PE_Valor, Custos: totalCostsPE, Lucro: 0 }, { name: 'Cenário', Receita: displayResult.Revenue, Custos: totalCostsScenario, Lucro: displayResult.LL } ];
   
-  // Pizza usa valores unitários/proporcionais, então não precisa multiplicar (exceto se quisesse mostrar totais absolutos no tooltip)
+  // Pizza usa valores unitários/proporcionais
+  // Para exibir no gráfico de pizza, se o marketing for variável, precisamos normalizar por unidade ou usar totais
   const taxAmount = (effectiveInputs.TxF || 0) + (effectiveResult.PVS * ((effectiveInputs.TxP || 0) / 100));
   const productCost = effectiveInputs.CP || 0;
+  // Margem de contribuição
   const contributionMargin = effectiveResult.MC_Real > 0 ? effectiveResult.MC_Real : 0; 
+  
   const pieChartData = [ { name: t.inputs.labels.cp, value: productCost, color: (isDarkMode && !isGeneratingPdf) ? '#64748b' : '#94a3b8' }, { name: 'Taxas', value: taxAmount, color: (isDarkMode && !isGeneratingPdf) ? '#d97706' : '#f59e0b' }, { name: t.results.kpi.mc, value: contributionMargin, color: (isDarkMode && !isGeneratingPdf) ? '#3b82f6' : '#1C3A5B' }, ];
   const activePieData = pieChartData.filter(d => d.value > 0);
   
@@ -197,7 +211,7 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
               <div><span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.cp}</span><span className="font-mono font-bold text-lg text-slate-800">{fmtCurrency(effectiveInputs.CP || 0)}</span></div>
               <div><span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.pvs}</span><span className="font-mono font-bold text-lg text-slate-800">{fmtCurrency(effectiveResult.PVS)}</span></div>
               <div><span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.meta}</span><span className="font-mono font-bold text-lg text-slate-800">{displayResult.Meta} un</span></div>
-              <div><span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.marketing}</span><span className="font-mono font-bold text-lg text-slate-800">{fmtCurrency(displayInputs.Marketing || 0)}</span></div>
+              <div><span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.marketing}</span><span className="font-mono font-bold text-lg text-slate-800">{fmtCurrency(displayResult.MarketingTotal || 0)}</span></div>
            </div>
         </div>
       </div>
@@ -306,7 +320,8 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
                 <tbody className="divide-y divide-slate-100/80 dark:divide-slate-700/50">
                     <TableRow label={t.results.table.revenue} value={displayResult.Revenue} bold tooltip={t.results.tooltips.revenue} fmtCurrency={fmtCurrency} />
                     <TableRow label={fixedLabel} value={displayInputs.CF || 0} isNegative tooltip={t.results.tooltips.fixed} fmtCurrency={fmtCurrency} />
-                    <TableRow label={t.results.table.marketing} value={displayInputs.Marketing || 0} isNegative tooltip={t.results.tooltips.marketing} fmtCurrency={fmtCurrency} />
+                    {/* Marketing agora usa MarketingTotal calculado */}
+                    <TableRow label={t.results.table.marketing} value={displayResult.MarketingTotal || 0} isNegative tooltip={t.results.tooltips.marketing} fmtCurrency={fmtCurrency} subLabel={initialInputs.MarketingType === 'percent' ? `${initialInputs.Marketing}% (Var)` : undefined} />
                     <TableRow label={t.results.table.variable_costs} value={displayResult.CV_UN * displayResult.Meta} isNegative subLabel={`${fmtCurrency(displayResult.CV_UN)}/un`} tooltip={t.results.tooltips.variable} fmtCurrency={fmtCurrency} />
                     <TableRow label={t.results.table.markup} customFormattedValue={(effectiveInputs.CP || 0) > 0 ? `${displayResult.Markup.toFixed(2)}x` : 'N/A'} subLabel={(effectiveInputs.CP || 0) > 0 ? "Sobre CP" : "Sem CP"} tooltip={t.results.tooltips.markup} />
                     <tr className="bg-slate-50 dark:bg-slate-700/30"><td colSpan={2} className="px-6 py-3 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2"><ShieldCheck size={14} /> {t.results.table.survival}</td></tr>

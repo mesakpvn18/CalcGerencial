@@ -13,7 +13,8 @@ export interface FinancialInputs {
   TxF?: number;      // Taxa Fixa por Transação
   TxP?: number;      // Taxa Percentual por Transação (0-100)
   CF?: number;       // Custos Fixos (Do período selecionado)
-  Marketing?: number; // Investimento em Marketing (Do período selecionado)
+  Marketing?: number; // Investimento em Marketing (Do período selecionado ou %)
+  MarketingType?: 'fixed' | 'percent'; // Tipo de input de marketing
   Churn?: number;    // Taxa de Cancelamento %
   PVS?: number;     // Preço de Venda Final
   Meta?: number;    // Meta de Vendas (Do período selecionado)
@@ -39,6 +40,7 @@ export interface CalculationResult {
   Payback: number;
   ROI: number;
   LTV_CAC_Ratio: number;
+  MarketingTotal: number; // Valor monetário total calculado do marketing
   isValid: boolean;
   error?: string;
 }

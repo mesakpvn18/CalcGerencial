@@ -23,6 +23,7 @@ const DEFAULT_INPUTS: FinancialInputs = {
   TxP: 4.99,
   CF: 1500.00,
   Marketing: 0, 
+  MarketingType: 'fixed', // Inicialização
   Churn: 0,     
   PVS: 89.90,
   Meta: 100,
@@ -117,6 +118,7 @@ function App() {
             TxP: safeParse(params.get('TxP')),
             CF: safeParse(params.get('CF')),
             Marketing: safeParse(params.get('Marketing')),
+            MarketingType: params.get('MarketingType') === 'percent' ? 'percent' : 'fixed',
             Churn: safeParse(params.get('Churn')),
             PVS: safeParse(params.get('PVS')),
             Meta: safeParse(params.get('Meta')),
@@ -227,13 +229,16 @@ function App() {
           params.set(key, value.toString());
         }
       });
+      // Salva também o tipo de marketing
+      if (inputs.MarketingType) params.set('MarketingType', inputs.MarketingType);
+      
       const newUrl = `${window.location.pathname}?${params.toString()}`;
       window.history.replaceState({}, '', newUrl);
     } catch (e) {}
   }, [inputs, mode]);
 
   const handleReset = () => {
-    setInputs({ CP: undefined, TxF: undefined, TxP: undefined, CF: undefined, Marketing: undefined, Churn: undefined, PVS: undefined, Meta: undefined, MLL_D: undefined });
+    setInputs({ CP: undefined, TxF: undefined, TxP: undefined, CF: undefined, Marketing: undefined, MarketingType: 'fixed', Churn: undefined, PVS: undefined, Meta: undefined, MLL_D: undefined });
     setMode(CalculationMode.DIRECT);
     setIsMobileMenuOpen(false);
   };
@@ -247,6 +252,8 @@ function App() {
           params.set(key, value.toString());
         }
       });
+      if (inputs.MarketingType) params.set('MarketingType', inputs.MarketingType);
+
       let baseUrl = window.location.href.split('?')[0];
       if (window.location.protocol === 'blob:') {
         baseUrl = window.location.origin + window.location.pathname;

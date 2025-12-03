@@ -38,6 +38,8 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
     if (name === 'TxP' && value > 100) error = t.inputs.errors.max100;
     if (name === 'MLL_D' && value >= 100) error = t.inputs.errors.max100;
     if (name === 'Churn' && value > 100) error = t.inputs.errors.max100;
+    // Se marketing for tipo percentual, valida limite 100
+    if (name === 'Marketing' && inputs.MarketingType === 'percent' && value > 100) error = t.inputs.errors.max100;
     return error;
   };
 
@@ -47,17 +49,21 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
     setInputs(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleMarketingTypeChange = (type: 'fixed' | 'percent') => {
+      setInputs(prev => ({ ...prev, MarketingType: type }));
+  };
+
   const loadTemplate = (type: 'saas' | 'infoproduto' | 'ecommerce') => {
     let template: FinancialInputs = {};
     switch(type) {
       case 'saas':
-        template = { CP: 0, CF: 3500, TxF: 0.50, TxP: 3.99, Marketing: 2000, Churn: 5.0, PVS: 49.90, Meta: 300, MLL_D: 30 };
+        template = { CP: 0, CF: 3500, TxF: 0.50, TxP: 3.99, Marketing: 2000, MarketingType: 'fixed', Churn: 5.0, PVS: 49.90, Meta: 300, MLL_D: 30 };
         break;
       case 'infoproduto':
-        template = { CP: 0, CF: 1000, TxF: 2.00, TxP: 9.90, Marketing: 5000, Churn: 2.0, PVS: 197.00, Meta: 100, MLL_D: 40 };
+        template = { CP: 0, CF: 1000, TxF: 2.00, TxP: 9.90, Marketing: 5000, MarketingType: 'fixed', Churn: 2.0, PVS: 197.00, Meta: 100, MLL_D: 40 };
         break;
       case 'ecommerce':
-        template = { CP: 45.00, CF: 2000, TxF: 0.00, TxP: 12.00, Marketing: 1500, Churn: 0, PVS: 129.90, Meta: 150, MLL_D: 15 };
+        template = { CP: 45.00, CF: 2000, TxF: 0.00, TxP: 12.00, Marketing: 1500, MarketingType: 'fixed', Churn: 0, PVS: 129.90, Meta: 150, MLL_D: 15 };
         break;
     }
     setInputs(template);
@@ -165,7 +171,33 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                  <InputGroup label={t.inputs.labels.txp} name="TxP" value={inputs.TxP} onValueChange={handleValueChange} icon={<Percent size={14} />} placeholder="0,00" isSuffix error={errors.TxP} type="percent" language={language} currency={currency}/>
               </div>
               <div className="grid grid-cols-1 gap-4">
-                 <InputGroup label={t.inputs.labels.marketing} name="Marketing" value={inputs.Marketing} onValueChange={handleValueChange} icon={<Megaphone size={14} />} placeholder={t.inputs.placeholders.ads} error={errors.Marketing} type="currency" language={language} currency={currency}/>
+                 <div>
+                    <div className="flex justify-between items-center mb-1.5 ml-0.5">
+                       <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.inputs.labels.marketing}</label>
+                       {/* Toggle Button for Marketing Type */}
+                       <div className="flex bg-slate-200 dark:bg-slate-700 rounded p-0.5">
+                          <button onClick={() => handleMarketingTypeChange('fixed')} className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${(!inputs.MarketingType || inputs.MarketingType === 'fixed') ? 'bg-white shadow text-[#1C3A5B]' : 'text-slate-400 hover:text-slate-600'}`}>{currency === 'BRL' ? 'R$' : '$'}</button>
+                          <button onClick={() => handleMarketingTypeChange('percent')} className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${inputs.MarketingType === 'percent' ? 'bg-white shadow text-[#1C3A5B]' : 'text-slate-400 hover:text-slate-600'}`}>%</button>
+                       </div>
+                    </div>
+                    <div className="relative group">
+                      <div className={`pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors ${errors.Marketing ? 'text-red-400' : 'text-slate-400 group-focus-within:text-[#1C3A5B] dark:group-focus-within:text-blue-400'}`}>
+                        {inputs.MarketingType === 'percent' ? <Percent size={14} /> : getCurrencyIcon()}
+                      </div>
+                      <MaskedInput 
+                         name="Marketing" 
+                         value={inputs.Marketing} 
+                         onValueChange={(val) => handleValueChange("Marketing", val)} 
+                         placeholder="0,00" 
+                         type={inputs.MarketingType === 'percent' ? 'percent' : 'currency'} 
+                         language={language} 
+                         currency={currency} 
+                         className={`block w-full rounded-lg py-2.5 ${inputs.MarketingType === 'percent' ? 'pl-3 pr-8 text-right' : 'pl-9 pr-3'} font-semibold bg-white dark:bg-slate-950 transition-all sm:text-sm shadow-sm outline-none border ${errors.Marketing ? 'border-red-300 text-red-600 focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:border-red-900/50 dark:focus:ring-red-900/20' : 'border-slate-300 dark:border-slate-700 text-[#333333] dark:text-slate-100 focus:border-[#1C3A5B] dark:focus:border-blue-500 focus:ring-4 focus:ring-[#1C3A5B]/10 dark:focus:ring-blue-500/20 hover:border-slate-400 dark:hover:border-slate-600'}`}
+                      />
+                      {inputs.MarketingType === 'percent' && <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 transition-colors ${errors.Marketing ? 'text-red-400' : 'text-slate-400 group-focus-within:text-[#1C3A5B] dark:group-focus-within:text-blue-400'}`}><Percent size={14} /></div>}
+                    </div>
+                    {errors.Marketing && <p className="text-[10px] text-red-500 mt-1 ml-0.5 flex items-center gap-1 animate-in slide-in-from-top-1"><AlertCircle size={10} /> {errors.Marketing}</p>}
+                 </div>
               </div>
             </div>
           </section>
