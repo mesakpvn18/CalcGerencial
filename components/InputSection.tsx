@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { FinancialInputs, CalculationMode, Language } from '../types';
-import { Calculator, Target, BarChart2, Info, DollarSign, Percent, Hash, Briefcase, RotateCcw, AlertCircle, TrendingDown, Megaphone, FolderOpen, Zap, Euro, ArrowRightLeft, Lock } from 'lucide-react';
+import { FinancialInputs, CalculationMode, Language, Period } from '../types';
+import { Calculator, Target, BarChart2, Info, DollarSign, Percent, Hash, Briefcase, RotateCcw, AlertCircle, TrendingDown, Megaphone, FolderOpen, Zap, Euro, ArrowRightLeft, Lock, CalendarClock } from 'lucide-react';
 import { translations } from '../utils/translations';
 import AdUnit from './AdUnit';
 
@@ -14,11 +14,13 @@ interface Props {
   currency: string;
   language: Language;
   isPro?: boolean;
+  period: Period; // Novo
+  setPeriod: (p: Period) => void; // Novo
   onCompare?: () => void;
   onGoalSeek?: () => void;
 }
 
-const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onReset, currency, language, isPro, onCompare, onGoalSeek }) => {
+const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onReset, currency, language, isPro, period, setPeriod, onCompare, onGoalSeek }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showTemplates, setShowTemplates] = useState(false);
   
@@ -60,6 +62,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
     }
     setInputs(template);
     setMode(CalculationMode.DIRECT);
+    setPeriod('monthly'); // Reset to monthly for templates
     setShowTemplates(false);
   };
 
@@ -106,6 +109,16 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
             <button onClick={onReset} className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-700 p-2 rounded-lg transition-all active:scale-95"><RotateCcw size={16} /></button>
           </div>
         </div>
+        
+        {/* Period Selector */}
+        <div className="mb-4 bg-white dark:bg-slate-900/50 p-2 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center justify-between">
+           <span className="text-xs font-bold text-slate-500 ml-2 flex items-center gap-2"><CalendarClock size={14}/> {t.inputs.period.label}</span>
+           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+              <button onClick={() => setPeriod('monthly')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${period === 'monthly' ? 'bg-[#1C3A5B] text-white shadow' : 'text-slate-500'}`}>{t.inputs.period.monthly}</button>
+              <button onClick={() => setPeriod('yearly')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${period === 'yearly' ? 'bg-[#1C3A5B] text-white shadow' : 'text-slate-500'}`}>{t.inputs.period.yearly}</button>
+           </div>
+        </div>
+
         <div className="bg-slate-200/50 dark:bg-slate-900/50 p-1.5 rounded-xl flex gap-1">
           <ModeButton targetMode={CalculationMode.DIRECT} icon={Calculator} label={t.inputs.modes.direct} />
           <ModeButton targetMode={CalculationMode.TARGET_PRICE} icon={Target} label={t.inputs.modes.price} />

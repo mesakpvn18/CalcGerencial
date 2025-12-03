@@ -1,5 +1,6 @@
 
 export type Language = 'pt' | 'en';
+export type Period = 'monthly' | 'yearly';
 
 export enum CalculationMode {
   DIRECT = 'DIRECT',
@@ -11,11 +12,11 @@ export interface FinancialInputs {
   CP?: number;       // Custo do Produto
   TxF?: number;      // Taxa Fixa por Transação
   TxP?: number;      // Taxa Percentual por Transação (0-100)
-  CF?: number;       // Custos Fixos Mensais
-  Marketing?: number; // Investimento em Marketing
+  CF?: number;       // Custos Fixos (Do período selecionado)
+  Marketing?: number; // Investimento em Marketing (Do período selecionado)
   Churn?: number;    // Taxa de Cancelamento %
   PVS?: number;     // Preço de Venda Final
-  Meta?: number;    // Meta de Vendas Mensais
+  Meta?: number;    // Meta de Vendas (Do período selecionado)
   MLL_D?: number;   // Margem de Lucro Líquida Desejada
 }
 
@@ -46,6 +47,7 @@ export interface HistoryItem {
   id: string;
   timestamp: number;
   mode: CalculationMode;
+  period?: Period; // Novo campo
   inputs: FinancialInputs;
   result: CalculationResult;
   currency?: string; 

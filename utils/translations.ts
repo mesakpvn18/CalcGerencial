@@ -18,6 +18,11 @@ export const translations = {
       title: "Parâmetros",
       templates: "Modelos",
       clear: "Limpar campos",
+      period: {
+         label: "Período Base",
+         monthly: "Mensal",
+         yearly: "Anual"
+      },
       modes: {
         direct: "Direto",
         price: "Preço",
@@ -34,12 +39,12 @@ export const translations = {
       },
       labels: {
         cp: "Custo Produto (CP)",
-        cf: "Custo Fixo (CF)",
+        cf: "Custo Fixo",
         txf: "Taxa Fixa (TxF)",
         txp: "Taxa % (TxP)",
-        marketing: "Marketing Invest. (Mensal)",
+        marketing: "Investimento em Marketing",
         pvs: "Preço Venda (PVS)",
-        meta: "Meta de Vendas (Qtd)",
+        meta: "Meta de Vendas",
         churn: "Churn (Cancelamento)",
         mll_d: "Margem Líquida Desejada"
       },
@@ -48,8 +53,8 @@ export const translations = {
         tax: "Imposto",
         ads: "Ads/Divulgação",
         price: "Valor para cliente",
-        units: "Unidades/mês",
-        percent: "Taxa % mensal",
+        units: "Unidades",
+        percent: "Taxa %",
         margin_ex: "Ex: 20"
       },
       hints: {
@@ -106,7 +111,8 @@ export const translations = {
         lifetime: "Tempo de Vida",
         ratio: "Razão LTV/CAC",
         roi: "ROI Marketing",
-        projection: "Projeção Anual (12 meses)"
+        projection: "Projeção (12 meses)",
+        monthly_avg: "Média Mensal"
       },
       tooltips: {
         revenue: "Valor total das vendas (PVS x Quantidade).",
@@ -166,6 +172,11 @@ export const translations = {
       title: "Parameters",
       templates: "Templates",
       clear: "Clear fields",
+      period: {
+         label: "Base Period",
+         monthly: "Monthly",
+         yearly: "Yearly"
+      },
       modes: {
         direct: "Direct",
         price: "Price",
@@ -182,12 +193,12 @@ export const translations = {
       },
       labels: {
         cp: "Product Cost (CP)",
-        cf: "Fixed Cost (CF)",
+        cf: "Fixed Cost",
         txf: "Fixed Fee (TxF)",
         txp: "Tax Rate % (TxP)",
-        marketing: "Marketing Invest. (Monthly)",
+        marketing: "Marketing Invest.",
         pvs: "Sales Price (PVS)",
-        meta: "Sales Target (Qty)",
+        meta: "Sales Target",
         churn: "Churn Rate",
         mll_d: "Desired Net Margin"
       },
@@ -196,8 +207,8 @@ export const translations = {
         tax: "Tax",
         ads: "Ads/Promo",
         price: "Value for client",
-        units: "Units/month",
-        percent: "Monthly % rate",
+        units: "Units",
+        percent: "Rate %",
         margin_ex: "Ex: 20"
       },
       hints: {
@@ -254,7 +265,8 @@ export const translations = {
         lifetime: "Lifetime",
         ratio: "LTV/CAC Ratio",
         roi: "Marketing ROI",
-        projection: "Yearly Projection (12mo)"
+        projection: "Yearly Projection (12mo)",
+        monthly_avg: "Monthly Average"
       },
       tooltips: {
         revenue: "Total sales value (Price x Quantity).",
@@ -292,7 +304,7 @@ export const translations = {
       title: "Strategic Guide",
       subtitle: "How to interpret your numbers and make decisions.",
       lucrativity: "Lucrativity & Margin",
-      risk: "Risk & Survival",
+      risk: "Risco & Survival",
       efficiency: "Client Efficiency",
       analysis: "Analysis",
       action: "Action"

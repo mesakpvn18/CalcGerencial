@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { FinancialInputs, CalculationMode, CalculationResult, HistoryItem, Language } from './types';
+import { FinancialInputs, CalculationMode, CalculationResult, HistoryItem, Language, Period } from './types';
 import { calculateFinancials } from './utils/calculations';
 import InputSection from './components/InputSection';
 import ResultsSection from './components/ResultsSection';
@@ -48,6 +48,7 @@ function App() {
   // Currency & Language State
   const [currency, setCurrency] = useState<string>('BRL');
   const [language, setLanguage] = useState<Language>('pt');
+  const [period, setPeriod] = useState<Period>('monthly'); // Novo estado
   
   // UI States
   const [showSettings, setShowSettings] = useState(false);
@@ -276,6 +277,7 @@ function App() {
         id: Date.now().toString(), // Temp ID
         timestamp: Date.now(),
         mode,
+        period, // Salva o período
         inputs: { ...inputs },
         result: { ...result },
         currency: currency,
@@ -306,6 +308,7 @@ function App() {
   const handleLoadHistory = (item: HistoryItem) => {
     setInputs(item.inputs);
     setMode(item.mode);
+    if(item.period) setPeriod(item.period); // Carrega o período
     if(item.currency) setCurrency(item.currency);
     if(item.language) setLanguage(item.language);
   };
@@ -337,6 +340,11 @@ function App() {
       action();
     }
     setIsMobileMenuOpen(false);
+  };
+
+  const handleGoalSeekApply = (newInputs: FinancialInputs) => {
+     setInputs(prev => ({...prev, ...newInputs}));
+     setIsGoalOpen(false);
   };
 
   const openAuth = () => { setIsAuthOpen(true); setIsMobileMenuOpen(false); };
@@ -597,6 +605,8 @@ function App() {
                currency={currency}
                language={language}
                isPro={isPro}
+               period={period} // Passa periodo
+               setPeriod={setPeriod} // Passa setter
                onCompare={() => handleProAction(() => setIsCompareOpen(true))}
                onGoalSeek={() => handleProAction(() => setIsGoalOpen(true))}
              />
@@ -608,6 +618,7 @@ function App() {
                 result={result} 
                 inputs={inputs}
                 mode={mode}
+                period={period} // Passa periodo para resultados
                 onSaveHistory={handleSaveHistory}
                 isDarkMode={isDarkMode}
                 currency={currency}
@@ -676,6 +687,7 @@ function App() {
         isOpen={isGoalOpen} 
         onClose={() => setIsGoalOpen(false)} 
         currentInputs={inputs}
+        onApply={handleGoalSeekApply}
         currency={currency}
         language={language === 'pt' ? 'pt-BR' : 'en-US'}
       />
