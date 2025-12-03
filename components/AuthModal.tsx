@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { X, LogIn, UserPlus, Database, AlertCircle, CheckCircle, Mail, ArrowRight } from 'lucide-react';
 import { initSupabase, signIn, signUp, isSupabaseConfigured } from '../services/supabase';
@@ -63,15 +64,19 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, onLoginSuccess, language 
       if (isLogin) {
         const { user } = await signIn(email, password);
         if (user) {
-          // Exibe tela de sucesso por 1.5s antes de fechar
+          // Exibe tela de sucesso
           setShowLoginSuccess(true);
+          
+          // Aguarda 1.5 segundos para o usuário ver a animação antes de fechar
           setTimeout(() => {
             onLoginSuccess(user);
             onClose();
-            // Reset states após fechar
+            // Reseta estados após fechar
             setTimeout(() => {
               setShowLoginSuccess(false);
               setLoading(false);
+              setEmail('');
+              setPassword('');
             }, 300);
           }, 1500);
         }
@@ -115,12 +120,12 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, onLoginSuccess, language 
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
       
       {/* Modal */}
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800 min-h-[400px] flex flex-col">
+      <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transition-all duration-300 border border-slate-200 dark:border-slate-800 min-h-[420px] flex flex-col transform scale-100 opacity-100">
         
-        {/* TELA DE SUCESSO AO CRIAR CONTA */}
+        {/* === TELA DE SUCESSO AO CRIAR CONTA === */}
         {showSignupSuccess ? (
-          <div className="flex-1 p-8 flex flex-col items-center justify-center text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6 ring-8 ring-emerald-50 dark:ring-emerald-900/10">
+          <div className="flex-1 p-8 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6 ring-8 ring-emerald-50 dark:ring-emerald-900/10 transition-transform transform scale-100">
               <Mail size={32} />
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
@@ -141,20 +146,20 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, onLoginSuccess, language 
             </button>
           </div>
         ) : showLoginSuccess ? (
-          /* TELA DE SUCESSO LOGIN */
-          <div className="flex-1 p-8 flex flex-col items-center justify-center text-center animate-in zoom-in duration-300">
-             <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6 shadow-xl shadow-emerald-900/10 ring-4 ring-white dark:ring-slate-800 scale-110">
-               <CheckCircle size={40} strokeWidth={3} />
+          /* === TELA DE SUCESSO LOGIN === */
+          <div className="flex-1 p-8 flex flex-col items-center justify-center text-center">
+             <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6 shadow-xl shadow-emerald-900/10 ring-4 ring-white dark:ring-slate-800 animate-pulse">
+               <CheckCircle size={48} strokeWidth={3} />
              </div>
-             <h2 className="text-2xl font-bold text-[#1C3A5B] dark:text-white mb-2">
+             <h2 className="text-2xl font-bold text-[#1C3A5B] dark:text-white mb-3">
                {t.loginSuccessTitle}
              </h2>
-             <p className="text-slate-500 dark:text-slate-400 font-medium">
+             <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">
                {t.loginWelcome}
              </p>
           </div>
         ) : (
-          /* TELA PADRÃO DE LOGIN/CONFIG */
+          /* === TELA PADRÃO DE FORMULÁRIO === */
           <>
             <div className="p-6 text-center border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
               <div className="mx-auto w-12 h-12 bg-[#1C3A5B] rounded-xl flex items-center justify-center text-white mb-3 shadow-lg shadow-blue-900/20">
@@ -166,7 +171,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, onLoginSuccess, language 
               <p className="text-xs text-slate-500 mt-1">
                 {configMode ? t.configDesc : t.loginDesc}
               </p>
-              <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+              <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
                 <X size={20} />
               </button>
             </div>

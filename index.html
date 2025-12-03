@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
@@ -13,6 +14,7 @@
 
     <!-- Open Graph / Facebook / WhatsApp Preview -->
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://fincalcdigital.app/" />
     <meta property="og:title" content="FinCalc Digital - Domine seus Números" />
     <meta property="og:description" content="Pare de perder dinheiro. Calcule o preço ideal e a meta de vendas para o seu negócio digital em segundos." />
     <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/2910/2910768.png" />
@@ -26,15 +28,15 @@
     <meta name="twitter:description" content="Simule cenários de lucro e precificação para negócios digitais." />
     <meta name="twitter:image" content="https://cdn-icons-png.flaticon.com/512/2910/2910768.png" />
 
-    <!-- PWA Config -->
+    <!-- PWA Config & Icons -->
     <link rel="manifest" href="./manifest.json" />
+    <!-- Usando um ícone financeiro profissional de alta qualidade -->
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2910/2910768.png" />
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2910/2910768.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="FinCalc" />
 
-    <title>FinCalc Digital - Assistente Financeiro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     
@@ -57,7 +59,7 @@
               }
             },
             screens: {
-              'xs': '400px',
+              'xs': '400px', // Breakpoint extra para celulares muito pequenos
             }
           }
         }
@@ -66,11 +68,9 @@
       // Register Service Worker with Relative Scope
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Usa './' para garantir caminho relativo no preview
           navigator.serviceWorker.register('./serviceWorker.js', { scope: './' })
             .then(reg => console.log('SW registrado!', reg))
             .catch(err => {
-               // Silencia erro em ambientes que não suportam SW (como alguns previews)
                console.log('SW Info:', err.message); 
             });
         });
@@ -148,7 +148,7 @@
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
     "recharts": "https://aistudiocdn.com/recharts@^2.13.0",
     "date-fns": "https://aistudiocdn.com/date-fns@^2.30.0",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.0"
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.39.0"
   }
 }
 </script>

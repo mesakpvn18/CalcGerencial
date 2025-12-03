@@ -29,28 +29,17 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
 
   const validateField = (name: string, value: number) => {
     let error = '';
-    
-    if (isNaN(value)) {
-       return ''; 
-    }
-    
-    if (value < 0) {
-       error = t.inputs.errors.negative;
-    }
-
+    if (isNaN(value)) return ''; 
+    if (value < 0) error = t.inputs.errors.negative;
     if (name === 'TxP' && value > 100) error = t.inputs.errors.max100;
     if (name === 'MLL_D' && value >= 100) error = t.inputs.errors.max100;
     if (name === 'Churn' && value > 100) error = t.inputs.errors.max100;
-
     return error;
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    
-    const numValue = value === '' ? undefined : parseFloat(value);
-    
-    const error = validateField(name, numValue ?? 0); 
+  // Handler que recebe o valor numérico direto do MaskedInput
+  const handleValueChange = (name: string, value: number | undefined) => {
+    const error = validateField(name, value ?? 0); 
     
     setErrors(prev => ({
       ...prev,
@@ -59,7 +48,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
 
     setInputs(prev => ({
       ...prev,
-      [name]: numValue
+      [name]: value
     }));
   };
 
@@ -68,43 +57,13 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
     
     switch(type) {
       case 'saas':
-        template = {
-          CP: 0,
-          CF: 3500,
-          TxF: 0.50,
-          TxP: 3.99,
-          Marketing: 2000,
-          Churn: 5.0,
-          PVS: 49.90,
-          Meta: 300,
-          MLL_D: 30
-        };
+        template = { CP: 0, CF: 3500, TxF: 0.50, TxP: 3.99, Marketing: 2000, Churn: 5.0, PVS: 49.90, Meta: 300, MLL_D: 30 };
         break;
       case 'infoproduto':
-        template = {
-          CP: 0,
-          CF: 1000,
-          TxF: 2.00,
-          TxP: 9.90,
-          Marketing: 5000,
-          Churn: 2.0,
-          PVS: 197.00,
-          Meta: 100,
-          MLL_D: 40
-        };
+        template = { CP: 0, CF: 1000, TxF: 2.00, TxP: 9.90, Marketing: 5000, Churn: 2.0, PVS: 197.00, Meta: 100, MLL_D: 40 };
         break;
       case 'ecommerce':
-        template = {
-          CP: 45.00,
-          CF: 2000,
-          TxF: 0.00,
-          TxP: 12.00,
-          Marketing: 1500,
-          Churn: 0,
-          PVS: 129.90,
-          Meta: 150,
-          MLL_D: 15
-        };
+        template = { CP: 45.00, CF: 2000, TxF: 0.00, TxP: 12.00, Marketing: 1500, Churn: 0, PVS: 129.90, Meta: 150, MLL_D: 15 };
         break;
     }
     
@@ -213,19 +172,25 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     label={t.inputs.labels.cp} 
                     name="CP" 
                     value={inputs.CP} 
-                    onChange={handleChange} 
+                    onValueChange={handleValueChange} 
                     icon={getCurrencyIcon()} 
-                    placeholder="0.00"
+                    placeholder="0,00"
                     error={errors.CP}
+                    type="currency"
+                    language={language}
+                    currency={currency}
                   />
                   <InputGroup 
                     label={t.inputs.labels.cf} 
                     name="CF" 
                     value={inputs.CF} 
-                    onChange={handleChange} 
+                    onValueChange={handleValueChange} 
                     icon={getCurrencyIcon()} 
-                    placeholder="0.00"
+                    placeholder="0,00"
                     error={errors.CF}
+                    type="currency"
+                    language={language}
+                    currency={currency}
                   />
               </div>
 
@@ -234,20 +199,26 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     label={t.inputs.labels.txf} 
                     name="TxF" 
                     value={inputs.TxF} 
-                    onChange={handleChange} 
+                    onValueChange={handleValueChange} 
                     icon={getCurrencyIcon()} 
                     placeholder={t.inputs.placeholders.gateway}
                     error={errors.TxF}
+                    type="currency"
+                    language={language}
+                    currency={currency}
                   />
                   <InputGroup 
                     label={t.inputs.labels.txp} 
                     name="TxP" 
                     value={inputs.TxP} 
-                    onChange={handleChange} 
+                    onValueChange={handleValueChange} 
                     icon={<Percent size={14} />} 
-                    placeholder={t.inputs.placeholders.tax}
-                    isPercentage
+                    placeholder="0,00"
+                    isSuffix
                     error={errors.TxP}
+                    type="percent"
+                    language={language}
+                    currency={currency}
                   />
               </div>
 
@@ -256,10 +227,13 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     label={t.inputs.labels.marketing} 
                     name="Marketing" 
                     value={inputs.Marketing} 
-                    onChange={handleChange} 
+                    onValueChange={handleValueChange} 
                     icon={<Megaphone size={14} />} 
                     placeholder={t.inputs.placeholders.ads}
                     error={errors.Marketing}
+                    type="currency"
+                    language={language}
+                    currency={currency}
                   />
               </div>
             </div>
@@ -279,11 +253,14 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     label={t.inputs.labels.pvs} 
                     name="PVS" 
                     value={inputs.PVS} 
-                    onChange={handleChange} 
+                    onValueChange={handleValueChange} 
                     icon={getCurrencyIcon()} 
                     placeholder={t.inputs.placeholders.price}
                     highlight
                     error={errors.PVS}
+                    type="currency"
+                    language={language}
+                    currency={currency}
                   />
                )}
 
@@ -292,11 +269,14 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     label={t.inputs.labels.meta} 
                     name="Meta" 
                     value={inputs.Meta} 
-                    onChange={handleChange} 
+                    onValueChange={handleValueChange} 
                     icon={<Hash size={14} />} 
                     placeholder={t.inputs.placeholders.units}
                     highlight
                     error={errors.Meta}
+                    type="integer"
+                    language={language}
+                    currency={currency}
                   />
                )}
 
@@ -304,11 +284,14 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                     label={t.inputs.labels.churn} 
                     name="Churn" 
                     value={inputs.Churn} 
-                    onChange={handleChange} 
+                    onValueChange={handleValueChange} 
                     icon={<TrendingDown size={14} />} 
-                    placeholder={t.inputs.placeholders.percent}
-                    isPercentage
+                    placeholder="0,00"
+                    isSuffix
                     error={errors.Churn}
+                    type="percent"
+                    language={language}
+                    currency={currency}
                />
 
                {mode !== CalculationMode.DIRECT && (
@@ -317,16 +300,18 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                        <span className="flex items-center gap-1.5"><Target size={14} className="text-indigo-600 dark:text-indigo-400"/> {t.inputs.labels.mll_d}</span>
                      </label>
                      <div className="relative group">
-                      <input
-                        type="number"
+                      <MaskedInput 
                         name="MLL_D"
-                        value={inputs.MLL_D ?? ''}
-                        onChange={handleChange}
+                        value={inputs.MLL_D}
+                        onValueChange={(val) => handleValueChange("MLL_D", val)}
+                        placeholder="0,00"
+                        type="percent"
+                        language={language}
+                        currency={currency}
                         className={`block w-full rounded-lg border pl-3 pr-10 py-2.5 font-bold focus:ring-4 outline-none sm:text-sm bg-white dark:bg-slate-950 transition-shadow group-hover:border-indigo-300 dark:group-hover:border-indigo-700
                         ${errors.MLL_D 
                           ? 'border-red-300 text-red-600 focus:border-red-500 focus:ring-red-200' 
                           : 'border-indigo-200 dark:border-indigo-900 text-[#333333] dark:text-slate-100 focus:border-[#1C3A5B] dark:focus:border-blue-500 focus:ring-[#1C3A5B]/10 dark:focus:ring-blue-500/20'}`}
-                        placeholder={t.inputs.placeholders.margin_ex}
                       />
                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                         <span className="text-indigo-400 text-sm font-bold">%</span>
@@ -359,32 +344,122 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
   );
 };
 
-const InputGroup = ({ 
-  label, name, value, onChange, icon, placeholder, isPercentage = false, highlight = false, error 
+// --- MASKED INPUT COMPONENT ---
+// Lida com a lógica de digitação monetária/percentual
+const MaskedInput = ({ 
+  name, 
+  value, 
+  onValueChange, 
+  placeholder, 
+  type = 'currency', 
+  language,
+  currency,
+  className 
 }: { 
-  label: string, name: string, value?: number, onChange: any, icon: any, placeholder: string, isPercentage?: boolean, highlight?: boolean, error?: string 
+  name: string, 
+  value?: number, 
+  onValueChange: (val: number | undefined) => void, 
+  placeholder: string, 
+  type: 'currency' | 'percent' | 'integer', 
+  language: Language,
+  currency: string,
+  className: string 
+}) => {
+  
+  // Decide o locale baseado PRIMEIRO na moeda, DEPOIS no idioma
+  const getLocale = () => {
+    // Se a moeda for USD, força formato americano (1,000.00) independente do idioma
+    if (currency === 'USD') return 'en-US';
+    // Se for BRL ou EUR, tende ao formato europeu/brasileiro (1.000,00)
+    if (currency === 'BRL' || currency === 'EUR') return 'pt-BR';
+    
+    // Fallback padrão pelo idioma
+    return language === 'pt' ? 'pt-BR' : 'en-US';
+  };
+
+  // Formata o número para exibição (ex: 1000.50 -> "1.000,50")
+  const formatDisplay = (val: number | undefined) => {
+    if (val === undefined || val === null) return '';
+    
+    // Se for inteiro, não tem decimal
+    if (type === 'integer') {
+      return val.toString();
+    }
+
+    // Moeda ou Porcentagem: sempre 2 casas decimais na formatação "Money Mask"
+    return val.toLocaleString(getLocale(), {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value;
+    
+    // Remove tudo que não for dígito
+    const digits = raw.replace(/\D/g, '');
+    
+    if (!digits) {
+      onValueChange(undefined);
+      return;
+    }
+
+    const numberValue = parseInt(digits, 10);
+
+    if (type === 'integer') {
+      onValueChange(numberValue);
+    } else {
+      // Moeda/Percent: Divide por 100 para criar o efeito de "arrastar a vírgula"
+      // Ex: Digita '1' -> 0.01. Digita '12' -> 0.12. Digita '123' -> 1.23
+      const floatValue = numberValue / 100;
+      onValueChange(floatValue);
+    }
+  };
+
+  return (
+    <input
+      type="text" // Input text para permitir formatação livre
+      inputMode="numeric" // Teclado numérico no mobile
+      name={name}
+      value={formatDisplay(value)}
+      onChange={handleChange}
+      className={className}
+      placeholder={placeholder}
+      autoComplete="off"
+    />
+  );
+};
+
+const InputGroup = ({ 
+  label, name, value, onValueChange, icon, placeholder, isSuffix = false, highlight = false, error, type = 'currency', language, currency 
+}: { 
+  label: string, name: string, value?: number, onValueChange: any, icon: any, placeholder: string, isSuffix?: boolean, highlight?: boolean, error?: string, type?: 'currency'|'percent'|'integer', language: Language, currency: string 
 }) => (
   <div>
     <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5 ml-0.5">{label}</label>
     <div className="relative group">
       <div className={`pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors ${error ? 'text-red-400' : 'text-slate-400 group-focus-within:text-[#1C3A5B] dark:group-focus-within:text-blue-400'}`}>
-        {!isPercentage && icon}
+        {!isSuffix && icon}
       </div>
-      <input
-        type="number"
+      
+      <MaskedInput
         name={name}
-        value={value ?? ''}
-        onChange={onChange}
-        className={`block w-full rounded-lg py-2.5 ${isPercentage ? 'pl-3 pr-8' : 'pl-9 pr-3'} font-semibold bg-white dark:bg-slate-950 transition-all sm:text-sm shadow-sm outline-none border
+        value={value}
+        onValueChange={(val) => onValueChange(name, val)}
+        placeholder={placeholder}
+        type={type}
+        language={language}
+        currency={currency}
+        className={`block w-full rounded-lg py-2.5 ${isSuffix ? 'pl-3 pr-8' : 'pl-9 pr-3'} font-semibold bg-white dark:bg-slate-950 transition-all sm:text-sm shadow-sm outline-none border
         ${error
           ? 'border-red-300 text-red-600 focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:border-red-900/50 dark:focus:ring-red-900/20'
           : highlight 
             ? 'border-blue-300 dark:border-blue-900 text-[#333333] dark:text-slate-100 focus:border-[#1C3A5B] dark:focus:border-blue-500 focus:ring-4 focus:ring-[#1C3A5B]/10 dark:focus:ring-blue-500/20' 
             : 'border-slate-300 dark:border-slate-700 text-[#333333] dark:text-slate-100 focus:border-[#1C3A5B] dark:focus:border-blue-500 focus:ring-4 focus:ring-[#1C3A5B]/10 dark:focus:ring-blue-500/20 hover:border-slate-400 dark:hover:border-slate-600'
         }`}
-        placeholder={placeholder}
       />
-      {isPercentage && (
+
+      {isSuffix && (
         <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 transition-colors ${error ? 'text-red-400' : 'text-slate-400 group-focus-within:text-[#1C3A5B] dark:group-focus-within:text-blue-400'}`}>
           {icon}
         </div>

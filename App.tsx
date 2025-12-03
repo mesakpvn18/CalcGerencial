@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { FinancialInputs, CalculationMode, CalculationResult, HistoryItem, Language } from './types';
 import { calculateFinancials } from './utils/calculations';
@@ -7,7 +8,7 @@ import HistoryModal from './components/HistoryModal';
 import EducationalGuide from './components/EducationalGuide';
 import CurrencyTicker from './components/CurrencyTicker';
 import AuthModal from './components/AuthModal';
-import { Moon, Sun, Clock, Share2, Check, BookOpen, DownloadCloud, DollarSign, Globe, LogIn, Settings } from 'lucide-react';
+import { Moon, Sun, Clock, Share2, Check, BookOpen, DownloadCloud, DollarSign, Globe, LogIn, Settings, ChevronDown, User } from 'lucide-react';
 import { translations } from './utils/translations';
 import { getUser, signOut, saveSimulation, getSimulations, deleteSimulation } from './services/supabase';
 
@@ -43,7 +44,7 @@ function App() {
   const [currency, setCurrency] = useState<string>('BRL');
   const [language, setLanguage] = useState<Language>('pt');
   
-  // UI State
+  // UI States
   const [showSettings, setShowSettings] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
 
@@ -117,17 +118,6 @@ function App() {
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
-  // Click outside to close settings
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
-        setShowSettings(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   // Check User Session on Mount
   useEffect(() => {
     const checkUser = async () => {
@@ -161,6 +151,17 @@ function App() {
       }
     } catch (e) {}
   }, [isDarkMode]);
+
+  // Click outside to close settings
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setShowSettings(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -258,7 +259,6 @@ function App() {
         isCloud: !!user
       };
 
-      // Se logado, salva no Supabase
       if (user) {
         try {
           const savedData = await saveSimulation(newItem, user.id);
