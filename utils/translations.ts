@@ -19,10 +19,14 @@ export const translations = {
       templates: "Modelos",
       clear: "Limpar campos",
       period: {
-         label: "Período Base",
-         monthly: "Mensal",
-         yearly: "Anual"
+         label: "Projeção / Visualização",
+         monthly: "Mensal (Base)",
+         bimestral: "Bimestral (2 meses)",
+         trimestral: "Trimestral (3 meses)",
+         semestral: "Semestral (6 meses)",
+         yearly: "Anual (12 meses)"
       },
+      input_hint: "Insira os valores MENSAIS. O sistema fará a projeção automaticamente.",
       modes: {
         direct: "Direto",
         price: "Preço",
@@ -34,8 +38,8 @@ export const translations = {
         meta: "Calcule quantas vendas são necessárias para sua meta de lucro."
       },
       sections: {
-        costs: "Custos e Despesas",
-        scenario: "Cenário e Vendas"
+        costs: "Custos e Despesas (Mensal)",
+        scenario: "Cenário e Vendas (Mensal)"
       },
       labels: {
         cp: "Custo Produto (CP)",
@@ -111,11 +115,11 @@ export const translations = {
         lifetime: "Tempo de Vida",
         ratio: "Razão LTV/CAC",
         roi: "ROI Marketing",
-        projection: "Projeção (12 meses)",
-        monthly_avg: "Média Mensal"
+        projection: "Visualização Base (Mensal)",
+        period_view: "Visão do Período"
       },
       tooltips: {
-        revenue: "Valor total das vendas (PVS x Quantidade).",
+        revenue: "Valor total das vendas no período (PVS x Quantidade).",
         fixed: "Custos que não mudam com a venda (Aluguel, Pro-labore).",
         marketing: "Verba destinada a anúncios e aquisição de clientes.",
         variable: "Custos que aumentam conforme a venda (Taxas + Custo Produto).",
@@ -173,10 +177,14 @@ export const translations = {
       templates: "Templates",
       clear: "Clear fields",
       period: {
-         label: "Base Period",
-         monthly: "Monthly",
-         yearly: "Yearly"
+         label: "Projection / View",
+         monthly: "Monthly (Base)",
+         bimestral: "Bimonthly (2 mo)",
+         trimestral: "Quarterly (3 mo)",
+         semestral: "Semiannual (6 mo)",
+         yearly: "Yearly (12 mo)"
       },
+      input_hint: "Enter MONTHLY values. The system will project automatically.",
       modes: {
         direct: "Direct",
         price: "Price",
@@ -188,8 +196,8 @@ export const translations = {
         meta: "Calculate sales volume needed to reach your profit target."
       },
       sections: {
-        costs: "Costs & Expenses",
-        scenario: "Scenario & Sales"
+        costs: "Costs & Expenses (Monthly)",
+        scenario: "Scenario & Sales (Monthly)"
       },
       labels: {
         cp: "Product Cost (CP)",
@@ -265,8 +273,8 @@ export const translations = {
         lifetime: "Lifetime",
         ratio: "LTV/CAC Ratio",
         roi: "Marketing ROI",
-        projection: "Yearly Projection (12mo)",
-        monthly_avg: "Monthly Average"
+        projection: "Base View (Monthly)",
+        period_view: "Period View"
       },
       tooltips: {
         revenue: "Total sales value (Price x Quantity).",

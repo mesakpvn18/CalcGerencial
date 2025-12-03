@@ -1,6 +1,6 @@
 
 export type Language = 'pt' | 'en';
-export type Period = 'monthly' | 'yearly';
+export type Period = 'monthly' | 'bimestral' | 'trimestral' | 'semestral' | 'yearly';
 
 export enum CalculationMode {
   DIRECT = 'DIRECT',
@@ -47,7 +47,7 @@ export interface HistoryItem {
   id: string;
   timestamp: number;
   mode: CalculationMode;
-  period?: Period; // Novo campo
+  period?: Period; 
   inputs: FinancialInputs;
   result: CalculationResult;
   currency?: string; 

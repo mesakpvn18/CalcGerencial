@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { FinancialInputs, CalculationMode, Language, Period } from '../types';
-import { Calculator, Target, BarChart2, Info, DollarSign, Percent, Hash, Briefcase, RotateCcw, AlertCircle, TrendingDown, Megaphone, FolderOpen, Zap, Euro, ArrowRightLeft, Lock, CalendarClock } from 'lucide-react';
+import { Calculator, Target, BarChart2, Info, DollarSign, Percent, Hash, Briefcase, RotateCcw, AlertCircle, TrendingDown, Megaphone, FolderOpen, Zap, Euro, ArrowRightLeft, Lock, CalendarClock, ChevronDown } from 'lucide-react';
 import { translations } from '../utils/translations';
 import AdUnit from './AdUnit';
 
@@ -14,8 +14,8 @@ interface Props {
   currency: string;
   language: Language;
   isPro?: boolean;
-  period: Period; // Novo
-  setPeriod: (p: Period) => void; // Novo
+  period: Period;
+  setPeriod: (p: Period) => void;
   onCompare?: () => void;
   onGoalSeek?: () => void;
 }
@@ -62,7 +62,6 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
     }
     setInputs(template);
     setMode(CalculationMode.DIRECT);
-    setPeriod('monthly'); // Reset to monthly for templates
     setShowTemplates(false);
   };
 
@@ -110,12 +109,33 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
           </div>
         </div>
         
-        {/* Period Selector */}
-        <div className="mb-4 bg-white dark:bg-slate-900/50 p-2 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center justify-between">
-           <span className="text-xs font-bold text-slate-500 ml-2 flex items-center gap-2"><CalendarClock size={14}/> {t.inputs.period.label}</span>
-           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-              <button onClick={() => setPeriod('monthly')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${period === 'monthly' ? 'bg-[#1C3A5B] text-white shadow' : 'text-slate-500'}`}>{t.inputs.period.monthly}</button>
-              <button onClick={() => setPeriod('yearly')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${period === 'yearly' ? 'bg-[#1C3A5B] text-white shadow' : 'text-slate-500'}`}>{t.inputs.period.yearly}</button>
+        {/* Period Selector (Visual Only) */}
+        <div className="mb-4 bg-white dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/50 flex flex-col gap-2">
+           <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-2"><CalendarClock size={14}/> {t.inputs.period.label}</span>
+              <div className="relative group">
+                <select 
+                  value={period} 
+                  onChange={(e) => setPeriod(e.target.value as Period)}
+                  className="appearance-none bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[#1C3A5B] dark:text-blue-300 text-xs font-bold py-1.5 pl-3 pr-8 rounded-lg cursor-pointer outline-none transition-colors border-none ring-0"
+                >
+                  <option value="monthly">{t.inputs.period.monthly}</option>
+                  <option value="bimestral">{t.inputs.period.bimestral}</option>
+                  <option value="trimestral">{t.inputs.period.trimestral}</option>
+                  <option value="semestral">{t.inputs.period.semestral}</option>
+                  <option value="yearly">{t.inputs.period.yearly}</option>
+                </select>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                  <ChevronDown size={12} />
+                </div>
+              </div>
+           </div>
+           
+           <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg">
+             <Info size={14} className="text-amber-500 mt-0.5 shrink-0" />
+             <p className="text-[10px] text-amber-700 dark:text-amber-400 font-medium leading-tight">
+               {t.inputs.input_hint}
+             </p>
            </div>
         </div>
 

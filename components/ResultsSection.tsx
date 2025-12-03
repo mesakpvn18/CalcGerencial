@@ -21,10 +21,9 @@ interface Props {
   language: Language;
   user: any; 
   onOpenAuth: () => void;
-  // NOVOS PROPS
   isPro?: boolean;
   onOpenUpgrade?: () => void;
-  period: Period; // Novo
+  period: Period;
 }
 
 const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initialInputs, mode, onSaveHistory, isDarkMode, currency, language, user, onOpenAuth, isPro, onOpenUpgrade, period }) => {
@@ -50,13 +49,48 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
     return { effectiveResult: simResult, effectiveInputs: simInputs, isSimulating: true };
   }, [initialResult, initialInputs, priceSensitivity, mode]);
 
+  // --- LÓGICA DE MULTIPLICAÇÃO DO PERÍODO ---
+  // Os inputs são SEMPRE mensais. O resultado base é MENSAL.
+  // Aqui aplicamos o multiplicador apenas para visualização.
+  const periodMultiplier = useMemo(() => {
+     switch(period) {
+        case 'bimestral': return 2;
+        case 'trimestral': return 3;
+        case 'semestral': return 6;
+        case 'yearly': return 12;
+        default: return 1; // monthly
+     }
+  }, [period]);
+
+  const displayResult = useMemo(() => {
+     return {
+        ...effectiveResult,
+        Meta: effectiveResult.Meta * periodMultiplier,
+        PE_Valor: effectiveResult.PE_Valor * periodMultiplier,
+        PE_UN: effectiveResult.PE_UN * periodMultiplier,
+        LL: effectiveResult.LL * periodMultiplier,
+        Revenue: effectiveResult.Revenue * periodMultiplier,
+        // MC_Real unitária não muda, nem PVS
+     };
+  }, [effectiveResult, periodMultiplier]);
+  
+  const displayInputs = useMemo(() => {
+     return {
+       ...effectiveInputs,
+       CF: (effectiveInputs.CF || 0) * periodMultiplier,
+       Marketing: (effectiveInputs.Marketing || 0) * periodMultiplier,
+     }
+  }, [effectiveInputs, periodMultiplier]);
+
   const handleAiAnalysis = async () => {
     if (!isPro && onOpenUpgrade) {
         onOpenUpgrade();
         return;
     }
     setIsLoadingAi(true);
-    const analysis = await analyzeFinancials(effectiveResult, effectiveInputs, mode);
+    // Para a IA, mandamos os dados do cenário base (mensal) ou explicamos o período?
+    // Melhor mandar o base e deixar a IA analisar o 'unit economics', mas informar o período de visualização
+    const analysis = await analyzeFinancials(displayResult, effectiveInputs, mode);
     setAiAnalysis(analysis);
     setIsLoadingAi(false);
   };
@@ -76,7 +110,6 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
       onOpenAuth();
       return;
     }
-    // PDF agora é liberado para logados, mas bloqueado para IA se nao pro.
     setIsGeneratingPdf(true);
     window.scrollTo(0, 0);
     const element = document.getElementById('printable-dashboard');
@@ -102,7 +135,7 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
     if (!user) { onOpenAuth(); return; }
     const fmt = (val: any) => { if (typeof val === 'number') return val.toFixed(2); if (val === undefined || val === null) return ''; return `"${String(val).replace(/"/g, '""')}"`; };
     const headers = ["Categoria", "Metrica", "Valor", "Unidade"];
-    const rows = [ ["Cenario", "Modo", mode, ""], ["Premissas", "Custo Produto", effectiveInputs.CP || 0, currency], ["Resultado", "Lucro Liquido", effectiveResult.LL, currency], ];
+    const rows = [ ["Cenario", "Modo", mode, ""], ["Premissas", "Custo Produto", effectiveInputs.CP || 0, currency], ["Resultado", "Lucro Liquido", displayResult.LL, currency], ];
     const csvContent = headers.join(";") + "\n" + rows.map(row => row.map(fmt).join(";")).join("\n");
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -111,26 +144,45 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
 
   if (!effectiveResult.isValid) { return <div className="h-full flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-red-100 dark:border-red-900/30 text-center"><div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-full mb-6"><AlertTriangle className="h-10 w-10 text-red-500" /></div><h3 className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Atenção nos parâmetros</h3><p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">{effectiveResult.error}</p></div>; }
 
-  const totalCostsWithMarketing = (effectiveInputs.CF || 0) + (effectiveInputs.Marketing || 0) + (effectiveResult.CV_UN * effectiveResult.PE_UN);
-  const totalCostsScenario = (effectiveInputs.CF || 0) + (effectiveInputs.Marketing || 0) + (effectiveResult.CV_UN * effectiveResult.Meta);
-  const barChartData = [ { name: t.results.kpi.pe, Receita: effectiveResult.PE_Valor, Custos: totalCostsWithMarketing, Lucro: 0 }, { name: 'Cenário', Receita: effectiveResult.Revenue, Custos: totalCostsScenario, Lucro: effectiveResult.LL } ];
+  // Recalcula totais para o gráfico usando valores multiplicados
+  const totalCostsWithMarketing = displayInputs.CF + displayInputs.Marketing + (displayResult.CV_UN * displayResult.PE_UN);
+  const totalCostsScenario = displayInputs.CF + displayInputs.Marketing + (displayResult.CV_UN * displayResult.Meta);
+  
+  const barChartData = [ { name: t.results.kpi.pe, Receita: displayResult.PE_Valor, Custos: totalCostsWithMarketing, Lucro: 0 }, { name: 'Cenário', Receita: displayResult.Revenue, Custos: totalCostsScenario, Lucro: displayResult.LL } ];
+  
+  // Pizza usa valores unitários/proporcionais, então não precisa multiplicar (exceto se quisesse mostrar totais absolutos no tooltip)
   const taxAmount = (effectiveInputs.TxF || 0) + (effectiveResult.PVS * ((effectiveInputs.TxP || 0) / 100));
   const productCost = effectiveInputs.CP || 0;
   const contributionMargin = effectiveResult.MC_Real > 0 ? effectiveResult.MC_Real : 0; 
   const pieChartData = [ { name: t.inputs.labels.cp, value: productCost, color: (isDarkMode && !isGeneratingPdf) ? '#64748b' : '#94a3b8' }, { name: 'Taxas', value: taxAmount, color: (isDarkMode && !isGeneratingPdf) ? '#d97706' : '#f59e0b' }, { name: t.results.kpi.mc, value: contributionMargin, color: (isDarkMode && !isGeneratingPdf) ? '#3b82f6' : '#1C3A5B' }, ];
   const activePieData = pieChartData.filter(d => d.value > 0);
+  
+  // Sensibilidade: multiplicamos o Lucro Líquido pelo periodo para manter consistência
   const sensitivityData = useMemo(() => {
     const basePrice = initialInputs.PVS || 0; if (basePrice <= 0) return []; const points = [];
-    for (let i = -10; i <= 10; i++) { const variation = i * 0.05; const price = basePrice * (1 + variation); const simInputs = { ...initialInputs, PVS: price, Meta: initialInputs.Meta }; const simResult = calculateFinancials(CalculationMode.DIRECT, simInputs); points.push({ variationPercent: Math.round(variation * 100), price: price, lucro: simResult.LL, isCurrent: Math.round(variation * 100) === priceSensitivity }); } return points;
-  }, [initialInputs, mode, priceSensitivity]);
+    for (let i = -10; i <= 10; i++) { const variation = i * 0.05; const price = basePrice * (1 + variation); const simInputs = { ...initialInputs, PVS: price, Meta: initialInputs.Meta }; const simResult = calculateFinancials(CalculationMode.DIRECT, simInputs); points.push({ variationPercent: Math.round(variation * 100), price: price, lucro: simResult.LL * periodMultiplier, isCurrent: Math.round(variation * 100) === priceSensitivity }); } return points;
+  }, [initialInputs, mode, priceSensitivity, periodMultiplier]);
+  
   const formatAxisValue = (value: number) => { let prefix = '$'; if (currency === 'BRL') prefix = 'R$'; else if (currency === 'EUR') prefix = '€'; if (value >= 1000000) return `${prefix}${(value / 1000000).toFixed(1)}M`; if (value >= 1000) return `${prefix}${(value / 1000).toFixed(0)}k`; return `${prefix}${value}`; };
 
-  // Logic for Projection Row based on Period
-  const projectionValue = period === 'monthly' ? effectiveResult.LL * 12 : effectiveResult.LL / 12;
-  const projectionLabel = period === 'monthly' ? t.results.table.projection : t.results.table.monthly_avg;
+  // Labels dinâmicos baseados no período
+  const getPeriodLabel = () => {
+    switch(period) {
+        case 'bimestral': return t.inputs.period.bimestral;
+        case 'trimestral': return t.inputs.period.trimestral;
+        case 'semestral': return t.inputs.period.semestral;
+        case 'yearly': return t.inputs.period.yearly;
+        default: return t.inputs.period.monthly;
+    }
+  };
 
-  const llLabel = `${t.results.kpi.ll} (${period === 'monthly' ? (language === 'pt' ? 'Mensal' : 'Monthly') : (language === 'pt' ? 'Anual' : 'Annual')})`;
-  const fixedLabel = `${t.results.table.fixed_costs} (${period === 'monthly' ? (language === 'pt' ? 'Mensal' : 'Monthly') : (language === 'pt' ? 'Anual' : 'Annual')})`;
+  const periodLabelText = getPeriodLabel();
+  const llLabel = `${t.results.kpi.ll} (${periodLabelText})`;
+  const fixedLabel = `${t.results.table.fixed_costs}`;
+
+  // Projeção: Se estiver em mensal, mostra anual. Se estiver em outro, mostra Mensal (base).
+  const projectionValue = period === 'monthly' ? effectiveResult.LL * 12 : effectiveResult.LL;
+  const projectionLabel = period === 'monthly' ? t.results.table.projection : t.results.table.projection.replace('Projeção (12 meses)', 'Base Mensal');
 
   return (
     <div id="printable-dashboard" className="space-y-6 animate-in fade-in duration-500 pb-10">
@@ -151,22 +203,22 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
           <div className="text-right"><p className="text-xs font-bold text-slate-400 uppercase">Gerado em</p><p className="text-lg font-bold text-slate-800">{new Date().toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US')} às {new Date().toLocaleTimeString()}</p><div className="mt-2 inline-flex items-center gap-2 bg-slate-100 px-3 py-1 rounded text-xs font-bold uppercase text-slate-600 border border-slate-200">{mode} {isSimulating ? '(SIMULADO)' : ''}</div></div>
         </div>
         <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 break-inside-avoid">
-           <h4 className="text-xs font-bold text-slate-400 uppercase mb-4 flex items-center gap-2 border-b border-slate-200 pb-2"><List size={14}/> {t.results.assumptions} ({period === 'monthly' ? 'Mensal' : 'Anual'})</h4>
+           <h4 className="text-xs font-bold text-slate-400 uppercase mb-4 flex items-center gap-2 border-b border-slate-200 pb-2"><List size={14}/> {t.results.assumptions} ({periodLabelText})</h4>
            <div className="grid grid-cols-4 gap-8 text-sm">
               <div><span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.cp}</span><span className="font-mono font-bold text-lg text-slate-800">{fmtCurrency(effectiveInputs.CP || 0)}</span></div>
               <div><span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.pvs}</span><span className="font-mono font-bold text-lg text-slate-800">{fmtCurrency(effectiveResult.PVS)}</span></div>
-              <div><span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.meta}</span><span className="font-mono font-bold text-lg text-slate-800">{effectiveInputs.Meta || effectiveResult.Meta} un</span></div>
-              <div><span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.marketing}</span><span className="font-mono font-bold text-lg text-slate-800">{fmtCurrency(effectiveInputs.Marketing || 0)}</span></div>
+              <div><span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.meta}</span><span className="font-mono font-bold text-lg text-slate-800">{displayResult.Meta} un</span></div>
+              <div><span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.marketing}</span><span className="font-mono font-bold text-lg text-slate-800">{fmtCurrency(displayInputs.Marketing || 0)}</span></div>
            </div>
         </div>
       </div>
       
-      {/* KPI Cards */}
+      {/* KPI Cards - USANDO displayResult (Multiplicado) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print-break-inside pdf-avoid-break">
-        <KPICard title={llLabel} value={fmtCurrency(effectiveResult.LL)} subtitle={`${t.results.kpi.sub.margin}: ${fmtPercent(effectiveResult.MLL_Real)}`} icon={Wallet} theme={effectiveResult.LL >= 0 ? "emerald" : "red"} />
-        <KPICard title={t.results.kpi.mc} value={fmtCurrency(effectiveResult.MC_Real)} subtitle={t.results.kpi.sub.sobra} icon={TrendingUp} theme="blue" />
-        <KPICard title={t.results.kpi.pe} value={`${effectiveResult.PE_UN}`} subtitle={t.results.kpi.sub.zerar} icon={Scale} theme="amber" unit="un." />
-        <KPICard title={mode === CalculationMode.TARGET_PRICE ? t.results.kpi.suggested_price : t.results.kpi.price} value={fmtCurrency(effectiveResult.PVS)} subtitle={mode === CalculationMode.TARGET_VOLUME ? `${t.results.kpi.sub.meta}: ${effectiveResult.Meta} un.` : t.results.kpi.sub.val_unit} icon={DollarSign} theme="violet" />
+        <KPICard title={llLabel} value={fmtCurrency(displayResult.LL)} subtitle={`${t.results.kpi.sub.margin}: ${fmtPercent(displayResult.MLL_Real)}`} icon={Wallet} theme={displayResult.LL >= 0 ? "emerald" : "red"} />
+        <KPICard title={t.results.kpi.mc} value={fmtCurrency(displayResult.MC_Real)} subtitle={t.results.kpi.sub.sobra} icon={TrendingUp} theme="blue" />
+        <KPICard title={t.results.kpi.pe} value={`${displayResult.PE_UN}`} subtitle={t.results.kpi.sub.zerar} icon={Scale} theme="amber" unit="un." />
+        <KPICard title={mode === CalculationMode.TARGET_PRICE ? t.results.kpi.suggested_price : t.results.kpi.price} value={fmtCurrency(displayResult.PVS)} subtitle={mode === CalculationMode.TARGET_VOLUME ? `${t.results.kpi.sub.meta}: ${displayResult.Meta} un.` : t.results.kpi.sub.val_unit} icon={DollarSign} theme="violet" />
       </div>
 
       {/* AD UNIT - HIDE IF PRO */}
@@ -180,7 +232,7 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print-break-inside pdf-avoid-break">
         <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col min-h-[400px] print-chart-fix">
           <div className="mb-6 flex items-center justify-between">
-            <div><h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><TrendingUp className="text-slate-400" size={20} /> {t.results.charts.viability}</h3><p className="text-sm text-slate-400 mt-1">{t.results.charts.revenue_cost}</p></div>
+            <div><h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><TrendingUp className="text-slate-400" size={20} /> {t.results.charts.viability}</h3><p className="text-sm text-slate-400 mt-1">{t.results.charts.revenue_cost} ({periodLabelText})</p></div>
             <div className="flex gap-2 no-print" data-html2canvas-ignore="true">
               <button onClick={handleExportCSV} className="p-2 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-400 hover:text-green-600 transition-colors relative group" title={user ? t.results.actions.export : "Login necessário"}>
                   {!user && <div className="absolute -top-1 -right-1 bg-amber-500 text-white rounded-full p-0.5"><Lock size={10} /></div>}<FileText size={18} />
@@ -203,22 +255,22 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
                 <Bar dataKey="Receita" fill={isDarkMode && !isGeneratingPdf ? "#3b82f6" : "#1C3A5B"} radius={[4, 4, 0, 0]} isAnimationActive={!isGeneratingPdf} />
                 <Bar dataKey="Custos" fill={isDarkMode && !isGeneratingPdf ? "#64748b" : "#94a3b8"} radius={[4, 4, 0, 0]} isAnimationActive={!isGeneratingPdf} />
-                <Bar dataKey="Lucro" fill={effectiveResult.LL >= 0 ? "#4CAF50" : "#E53935"} radius={[4, 4, 0, 0]} isAnimationActive={!isGeneratingPdf} />
+                <Bar dataKey="Lucro" fill={displayResult.LL >= 0 ? "#4CAF50" : "#E53935"} radius={[4, 4, 0, 0]} isAnimationActive={!isGeneratingPdf} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col min-h-[400px] break-inside-avoid print-chart-fix">
-          <div className="mb-2"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><PieIcon className="text-slate-400" size={20} /> {t.results.charts.composition}</h3><p className="text-sm text-slate-400 mt-1">{t.results.charts.detail}: {fmtCurrency(effectiveResult.PVS)}</p></div>
+          <div className="mb-2"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><PieIcon className="text-slate-400" size={20} /> {t.results.charts.composition}</h3><p className="text-sm text-slate-400 mt-1">{t.results.charts.detail}: {fmtCurrency(displayResult.PVS)}</p></div>
           <div className="flex-1 w-full relative h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={activePieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value" stroke={isDarkMode && !isGeneratingPdf ? '#1e293b' : '#ffffff'} strokeWidth={2} isAnimationActive={!isGeneratingPdf}>{activePieData.map((entry, index) => ( <Cell key={`cell-${index}`} fill={entry.color} /> ))}</Pie>
-                <Tooltip content={<CustomPieTooltip isDarkMode={isDarkMode && !isGeneratingPdf} total={effectiveResult.PVS} fmtCurrency={fmtCurrency} />} />
+                <Tooltip content={<CustomPieTooltip isDarkMode={isDarkMode && !isGeneratingPdf} total={displayResult.PVS} fmtCurrency={fmtCurrency} />} />
                 <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8"><div className="text-center"><span className="text-[10px] text-slate-400 uppercase font-bold block">Preço</span><span className="text-xl font-bold text-[#1C3A5B] dark:text-blue-400">{fmtCurrency(effectiveResult.PVS)}</span></div></div>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8"><div className="text-center"><span className="text-[10px] text-slate-400 uppercase font-bold block">Preço</span><span className="text-xl font-bold text-[#1C3A5B] dark:text-blue-400">{fmtCurrency(displayResult.PVS)}</span></div></div>
           </div>
         </div>
       </div>
@@ -226,7 +278,7 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
       {/* Simulador */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col print-chart-fix pdf-avoid-break">
           <div className="mb-6 flex justify-between items-center">
-            <div><h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><Activity className="text-indigo-500" size={20} /> {t.results.charts.sensitivity}</h3><p className="text-sm text-slate-400 mt-1">{t.results.charts.sensitivity_desc}</p></div>
+            <div><h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><Activity className="text-indigo-500" size={20} /> {t.results.charts.sensitivity}</h3><p className="text-sm text-slate-400 mt-1">{t.results.charts.sensitivity_desc} ({periodLabelText})</p></div>
             <div className="hidden pdf-mode text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded border border-indigo-100">Cenário {priceSensitivity > 0 ? `+${priceSensitivity}%` : `${priceSensitivity}%`} sobre PVS</div>
           </div>
           <div className="mb-8 px-2" data-html2canvas-ignore="true">
@@ -243,7 +295,7 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
                    <ReferenceLine x={initialResult.PVS} stroke="#94a3b8" strokeDasharray="3 3" label={{ value: 'Original', position: 'top', fill: isDarkMode && !isGeneratingPdf ? '#94a3b8' : '#64748b', fontSize: 10 }} />
                    <ReferenceLine y={0} stroke="#E53935" strokeOpacity={0.5} />
                    <Line type="monotone" dataKey="lucro" stroke="#4CAF50" strokeWidth={3} dot={false} activeDot={false} isAnimationActive={!isGeneratingPdf} />
-                   <ReferenceDot x={effectiveResult.PVS} y={effectiveResult.LL} r={6} fill="#1C3A5B" stroke="white" strokeWidth={2} />
+                   <ReferenceDot x={displayResult.PVS} y={displayResult.LL} r={6} fill="#1C3A5B" stroke="white" strokeWidth={2} />
                 </LineChart>
              </ResponsiveContainer>
           </div>
@@ -256,28 +308,28 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
            <div className="flex-1 overflow-auto">
              <table className="w-full text-sm text-left">
                 <tbody className="divide-y divide-slate-100/80 dark:divide-slate-700/50">
-                    <TableRow label={t.results.table.revenue} value={effectiveResult.Revenue} bold tooltip={t.results.tooltips.revenue} fmtCurrency={fmtCurrency} />
-                    <TableRow label={fixedLabel} value={effectiveInputs.CF || 0} isNegative tooltip={t.results.tooltips.fixed} fmtCurrency={fmtCurrency} />
-                    <TableRow label={t.results.table.marketing} value={effectiveInputs.Marketing || 0} isNegative tooltip={t.results.tooltips.marketing} fmtCurrency={fmtCurrency} />
-                    <TableRow label={t.results.table.variable_costs} value={effectiveResult.CV_UN * effectiveResult.Meta} isNegative subLabel={`${fmtCurrency(effectiveResult.CV_UN)}/un`} tooltip={t.results.tooltips.variable} fmtCurrency={fmtCurrency} />
-                    <TableRow label={t.results.table.markup} customFormattedValue={(effectiveInputs.CP || 0) > 0 ? `${effectiveResult.Markup.toFixed(2)}x` : 'N/A'} subLabel={(effectiveInputs.CP || 0) > 0 ? "Sobre CP" : "Sem CP"} tooltip={t.results.tooltips.markup} />
+                    <TableRow label={t.results.table.revenue} value={displayResult.Revenue} bold tooltip={t.results.tooltips.revenue} fmtCurrency={fmtCurrency} />
+                    <TableRow label={fixedLabel} value={displayInputs.CF || 0} isNegative tooltip={t.results.tooltips.fixed} fmtCurrency={fmtCurrency} />
+                    <TableRow label={t.results.table.marketing} value={displayInputs.Marketing || 0} isNegative tooltip={t.results.tooltips.marketing} fmtCurrency={fmtCurrency} />
+                    <TableRow label={t.results.table.variable_costs} value={displayResult.CV_UN * displayResult.Meta} isNegative subLabel={`${fmtCurrency(displayResult.CV_UN)}/un`} tooltip={t.results.tooltips.variable} fmtCurrency={fmtCurrency} />
+                    <TableRow label={t.results.table.markup} customFormattedValue={(effectiveInputs.CP || 0) > 0 ? `${displayResult.Markup.toFixed(2)}x` : 'N/A'} subLabel={(effectiveInputs.CP || 0) > 0 ? "Sobre CP" : "Sem CP"} tooltip={t.results.tooltips.markup} />
                     <tr className="bg-slate-50 dark:bg-slate-700/30"><td colSpan={2} className="px-6 py-3 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2"><ShieldCheck size={14} /> {t.results.table.survival}</td></tr>
-                    <TableRow label={t.results.table.pe_unit} customFormattedValue={`${effectiveResult.PE_UN} un`} tooltip={t.results.tooltips.pe} />
-                     <TableRow label={t.results.table.pe_rev} value={effectiveResult.PE_Valor} tooltip={t.results.tooltips.pe} fmtCurrency={fmtCurrency} />
-                     <TableRow label={t.results.table.margin_safety} customFormattedValue={fmtPercent(effectiveResult.MarginSafety * 100)} isStatus={true} statusColor={effectiveResult.MarginSafety > 0 ? 'text-emerald-600' : 'text-red-500'} tooltip={t.results.tooltips.safety} />
-                    <TableRow label={t.results.table.mmc} value={effectiveResult.MMC} subLabel="Absorção CF" tooltip={t.results.tooltips.mmc} fmtCurrency={fmtCurrency} />
+                    <TableRow label={t.results.table.pe_unit} customFormattedValue={`${displayResult.PE_UN} un`} tooltip={t.results.tooltips.pe} />
+                     <TableRow label={t.results.table.pe_rev} value={displayResult.PE_Valor} tooltip={t.results.tooltips.pe} fmtCurrency={fmtCurrency} />
+                     <TableRow label={t.results.table.margin_safety} customFormattedValue={fmtPercent(displayResult.MarginSafety * 100)} isStatus={true} statusColor={displayResult.MarginSafety > 0 ? 'text-emerald-600' : 'text-red-500'} tooltip={t.results.tooltips.safety} />
+                    <TableRow label={t.results.table.mmc} value={displayResult.MMC} subLabel="Absorção CF" tooltip={t.results.tooltips.mmc} fmtCurrency={fmtCurrency} />
                     <tr className="bg-slate-50 dark:bg-slate-700/30"><td colSpan={2} className="px-6 py-3 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2"><Users size={14} /> {t.results.table.efficiency}</td></tr>
-                    <TableRow label={t.results.table.cac} value={effectiveResult.CAC} subLabel="Custo Aquisição" tooltip={t.results.tooltips.cac} fmtCurrency={fmtCurrency} />
-                     <TableRow label={t.results.table.payback} customFormattedValue={effectiveResult.Payback > 0 ? `${effectiveResult.Payback.toFixed(1)}` : "N/A"} subLabel={period === 'monthly' ? "Meses" : "Anos"} isStatus={true} statusColor={effectiveResult.Payback <= 6 ? 'text-emerald-600' : effectiveResult.Payback <= 12 ? 'text-amber-500' : 'text-red-500'} tooltip={t.results.tooltips.payback} />
-                    <TableRow label={t.results.table.ltv} value={effectiveResult.LTV} subLabel="Valor Vitalício" tooltip={t.results.tooltips.ltv} fmtCurrency={fmtCurrency} />
-                     <TableRow label={t.results.table.lifetime} customFormattedValue={effectiveResult.Lifetime > 0 ? `${effectiveResult.Lifetime.toFixed(1)}` : "-"} subLabel={period === 'monthly' ? "Meses" : "Anos"} tooltip={t.results.tooltips.lifetime} />
-                    <TableRow label={t.results.table.ratio} customFormattedValue={`${effectiveResult.LTV_CAC_Ratio.toFixed(1)}x`} isStatus={true} statusColor={effectiveResult.LTV_CAC_Ratio >= 3 ? 'text-emerald-600' : (effectiveResult.LTV_CAC_Ratio >= 1 ? 'text-amber-500' : 'text-red-500')} tooltip={t.results.tooltips.ratio} />
-                    <TableRow label={t.results.table.roi} customFormattedValue={fmtPercent(effectiveResult.ROI)} isStatus={true} statusColor={effectiveResult.ROI > 0 ? 'text-emerald-600' : 'text-red-500'} tooltip={t.results.tooltips.roi} />
+                    <TableRow label={t.results.table.cac} value={displayResult.CAC} subLabel="Custo Aquisição" tooltip={t.results.tooltips.cac} fmtCurrency={fmtCurrency} />
+                     <TableRow label={t.results.table.payback} customFormattedValue={displayResult.Payback > 0 ? `${displayResult.Payback.toFixed(1)}` : "N/A"} subLabel={period === 'monthly' ? "Meses" : "Anos"} isStatus={true} statusColor={displayResult.Payback <= 6 ? 'text-emerald-600' : displayResult.Payback <= 12 ? 'text-amber-500' : 'text-red-500'} tooltip={t.results.tooltips.payback} />
+                    <TableRow label={t.results.table.ltv} value={displayResult.LTV} subLabel="Valor Vitalício" tooltip={t.results.tooltips.ltv} fmtCurrency={fmtCurrency} />
+                     <TableRow label={t.results.table.lifetime} customFormattedValue={displayResult.Lifetime > 0 ? `${displayResult.Lifetime.toFixed(1)}` : "-"} subLabel={period === 'monthly' ? "Meses" : "Anos"} tooltip={t.results.tooltips.lifetime} />
+                    <TableRow label={t.results.table.ratio} customFormattedValue={`${displayResult.LTV_CAC_Ratio.toFixed(1)}x`} isStatus={true} statusColor={displayResult.LTV_CAC_Ratio >= 3 ? 'text-emerald-600' : (displayResult.LTV_CAC_Ratio >= 1 ? 'text-amber-500' : 'text-red-500')} tooltip={t.results.tooltips.ratio} />
+                    <TableRow label={t.results.table.roi} customFormattedValue={fmtPercent(displayResult.ROI)} isStatus={true} statusColor={displayResult.ROI > 0 ? 'text-emerald-600' : 'text-red-500'} tooltip={t.results.tooltips.roi} />
                      
-                     {/* PROJEÇÃO DINÂMICA */}
+                     {/* PROJEÇÃO DINÂMICA OU COMPARAÇÃO */}
                      <tr className="bg-indigo-50 dark:bg-indigo-900/10 border-t border-indigo-100 dark:border-indigo-800"><td colSpan={2} className="px-6 py-3"><div className="flex justify-between items-center"><div className="flex items-center gap-2 text-indigo-800 dark:text-indigo-300 font-bold text-xs uppercase"><CalendarRange size={14} /> {projectionLabel}</div><div className="font-mono font-bold text-sm text-indigo-700 dark:text-indigo-300">{fmtCurrency(projectionValue)}</div></div></td></tr>
                     
-                    <tr className="bg-slate-100/50 dark:bg-slate-700/50 border-t-2 border-slate-100 dark:border-slate-600"><td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100 text-sm">{llLabel}</td><td className={`px-6 py-4 text-right font-bold text-sm ${effectiveResult.LL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{fmtCurrency(effectiveResult.LL)}</td></tr>
+                    <tr className="bg-slate-100/50 dark:bg-slate-700/50 border-t-2 border-slate-100 dark:border-slate-600"><td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100 text-sm">{llLabel}</td><td className={`px-6 py-4 text-right font-bold text-sm ${displayResult.LL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{fmtCurrency(displayResult.LL)}</td></tr>
                 </tbody>
             </table>
            </div>
