@@ -4,9 +4,9 @@ import { formatCurrency, formatPercent, calculateFinancials } from '../utils/cal
 import { analyzeFinancials } from '../services/geminiService';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
-  PieChart, Pie, Cell, LineChart, Line
+  PieChart, Pie, Cell, LineChart, Line, ReferenceDot
 } from 'recharts';
-import { BrainCircuit, Loader2, TrendingUp, AlertTriangle, Scale, DollarSign, Wallet, Save, PieChart as PieIcon, List, ShieldCheck, Users, Printer, FileText, HelpCircle, Check, Activity, Download, CalendarRange, Lock } from 'lucide-react';
+import { BrainCircuit, Loader2, TrendingUp, AlertTriangle, Scale, DollarSign, Wallet, Save, PieChart as PieIcon, List, ShieldCheck, Users, Printer, FileText, HelpCircle, Check, Activity, Download, CalendarRange, Lock, RefreshCcw, TrendingDown } from 'lucide-react';
 import { translations } from '../utils/translations';
 import AdUnit from './AdUnit';
 
@@ -18,15 +18,18 @@ interface Props {
   isDarkMode: boolean;
   currency: string;
   language: Language;
-  user: any; // Usuário logado
-  onOpenAuth: () => void; // Função para abrir modal de login
+  user: any; 
+  onOpenAuth: () => void; 
 }
 
-const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, isDarkMode, currency, language, user, onOpenAuth }) => {
+const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initialInputs, mode, onSaveHistory, isDarkMode, currency, language, user, onOpenAuth }) => {
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  
+  // Estado para o Slider de Sensibilidade (-50 a +50)
+  const [priceSensitivity, setPriceSensitivity] = useState(0);
   
   const t = translations[language];
 
@@ -34,13 +37,26 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
   const fmtCurrency = (val: number) => formatCurrency(val, currency, language);
   const fmtPercent = (val: number) => formatPercent(val, language);
 
+  // --- LÓGICA DE SIMULAÇÃO GLOBAL ---
+  // Se o slider for diferente de 0, recalculamos TUDO baseado no novo preço
+  const { effectiveResult, effectiveInputs, isSimulating } = useMemo(() => {
+    if (priceSensitivity === 0) {
+      return { effectiveResult: initialResult, effectiveInputs: initialInputs, isSimulating: false };
+    }
+
+    const newPVS = (initialInputs.PVS || 0) * (1 + priceSensitivity / 100);
+    // Cria novos inputs com o preço simulado
+    const simInputs = { ...initialInputs, PVS: newPVS };
+    // Recalcula todas as métricas (LL, PE, ROI, etc.)
+    const simResult = calculateFinancials(mode === CalculationMode.TARGET_PRICE ? CalculationMode.DIRECT : mode, simInputs);
+
+    return { effectiveResult: simResult, effectiveInputs: simInputs, isSimulating: true };
+  }, [initialResult, initialInputs, priceSensitivity, mode]);
+
   const handleAiAnalysis = async () => {
-    // IA é recurso pago/premium, exigimos login também?
-    // Por enquanto deixaremos livre conforme pedido, mas pode ser bloqueado:
-    // if (!user) { onOpenAuth(); return; }
-    
     setIsLoadingAi(true);
-    const analysis = await analyzeFinancials(result, inputs, mode);
+    // Envia o resultado efetivo (simulado ou não) para a IA
+    const analysis = await analyzeFinancials(effectiveResult, effectiveInputs, mode);
     setAiAnalysis(analysis);
     setIsLoadingAi(false);
   };
@@ -50,7 +66,9 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       onOpenAuth();
       return;
     }
-    onSaveHistory();
+    // Nota: Aqui poderíamos salvar o cenário simulado ou o original. 
+    // Por padrão salvamos o estado atual da tela.
+    onSaveHistory(); 
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
   };
@@ -69,13 +87,11 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       return;
     }
 
-    // 1. FORÇAR MODO CLARO (LIGHT MODE) TEMPORARIAMENTE
     const wasDarkMode = document.documentElement.classList.contains('dark');
     if (wasDarkMode) {
       document.documentElement.classList.remove('dark');
     }
 
-    // 2. FORÇAR LAYOUT DESKTOP
     const originalWidth = element.style.width;
     const originalPadding = element.style.padding;
     
@@ -92,7 +108,6 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
        } catch (e) {
          alert("Erro ao gerar PDF. Tente Ctrl+P.");
        }
-       // Restaura
        element.style.width = originalWidth;
        element.style.padding = originalPadding;
        element.classList.remove('pdf-generation-active');
@@ -105,13 +120,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       margin:       [5, 5, 5, 5], 
       filename:     `FinCalc_Report_${new Date().toISOString().split('T')[0]}.pdf`,
       image:        { type: 'jpeg', quality: 1 },
-      html2canvas:  { 
-        scale: 2, 
-        useCORS: true, 
-        logging: false,
-        windowWidth: 1200, 
-        backgroundColor: '#ffffff'
-      },
+      html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1200, backgroundColor: '#ffffff' },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
       pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
     };
@@ -123,15 +132,12 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
       console.error("PDF Error:", e);
       alert("Erro ao gerar PDF.");
     } finally {
-      // 3. RESTAURAR
       element.style.width = originalWidth;
       element.style.padding = originalPadding;
       element.classList.remove('pdf-generation-active');
-      
       if (wasDarkMode) {
         document.documentElement.classList.add('dark');
       }
-      
       setIsGeneratingPdf(false);
     }
   };
@@ -143,9 +149,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
     }
 
     const fmt = (val: any) => {
-      if (typeof val === 'number') {
-        return val.toFixed(2);
-      }
+      if (typeof val === 'number') return val.toFixed(2);
       if (val === undefined || val === null) return '';
       return `"${String(val).replace(/"/g, '""')}"`;
     };
@@ -153,15 +157,13 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
     const headers = ["Categoria", "Metrica", "Valor", "Unidade"];
     const rows = [
       ["Cenario", "Modo", mode, ""],
-      ["Premissas", "Custo Produto", inputs.CP || 0, currency],
-      ["Premissas", "Custo Fixo", inputs.CF || 0, currency],
-      ["Resultado", "Lucro Liquido", result.LL, currency],
-      ["Resultado", "ROI", result.ROI, "%"]
+      ["Premissas", "Custo Produto", effectiveInputs.CP || 0, currency],
+      ["Premissas", "Custo Fixo", effectiveInputs.CF || 0, currency],
+      ["Resultado", "Lucro Liquido", effectiveResult.LL, currency],
+      ["Resultado", "ROI", effectiveResult.ROI, "%"]
     ];
 
-    const csvContent = headers.join(";") + "\n" 
-      + rows.map(row => row.map(fmt).join(";")).join("\n");
-
+    const csvContent = headers.join(";") + "\n" + rows.map(row => row.map(fmt).join(";")).join("\n");
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -173,40 +175,40 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
     setTimeout(() => URL.revokeObjectURL(url), 100);
   };
 
-  if (!result.isValid) {
+  if (!effectiveResult.isValid) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-red-100 dark:border-red-900/30 text-center animate-in fade-in duration-500">
         <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-full mb-6">
           <AlertTriangle className="h-10 w-10 text-red-500" />
         </div>
         <h3 className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Atenção nos parâmetros</h3>
-        <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">{result.error}</p>
+        <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">{effectiveResult.error}</p>
       </div>
     );
   }
 
-  // --- Data Preparation ---
-  const totalCostsWithMarketing = (inputs.CF || 0) + (inputs.Marketing || 0) + (result.CV_UN * result.PE_UN);
-  const totalCostsScenario = (inputs.CF || 0) + (inputs.Marketing || 0) + (result.CV_UN * result.Meta);
+  // --- Data Preparation (USANDO effectiveResult) ---
+  const totalCostsWithMarketing = (effectiveInputs.CF || 0) + (effectiveInputs.Marketing || 0) + (effectiveResult.CV_UN * effectiveResult.PE_UN);
+  const totalCostsScenario = (effectiveInputs.CF || 0) + (effectiveInputs.Marketing || 0) + (effectiveResult.CV_UN * effectiveResult.Meta);
 
   const barChartData = [
     {
       name: t.results.kpi.pe,
-      Receita: result.PE_Valor,
+      Receita: effectiveResult.PE_Valor,
       Custos: totalCostsWithMarketing,
       Lucro: 0, 
     },
     {
       name: 'Cenário',
-      Receita: result.Revenue,
+      Receita: effectiveResult.Revenue,
       Custos: totalCostsScenario,
-      Lucro: result.LL,
+      Lucro: effectiveResult.LL,
     }
   ];
 
-  const taxAmount = (inputs.TxF || 0) + (result.PVS * ((inputs.TxP || 0) / 100));
-  const productCost = inputs.CP || 0;
-  const contributionMargin = result.MC_Real > 0 ? result.MC_Real : 0; 
+  const taxAmount = (effectiveInputs.TxF || 0) + (effectiveResult.PVS * ((effectiveInputs.TxP || 0) / 100));
+  const productCost = effectiveInputs.CP || 0;
+  const contributionMargin = effectiveResult.MC_Real > 0 ? effectiveResult.MC_Real : 0; 
   
   const pieChartData = [
     { name: t.inputs.labels.cp, value: productCost, color: (isDarkMode && !isGeneratingPdf) ? '#64748b' : '#94a3b8' }, 
@@ -218,24 +220,27 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
 
   // --- SENSITIVITY ANALYSIS DATA ---
   const sensitivityData = useMemo(() => {
-    const currentPrice = result.PVS;
-    if (currentPrice <= 0) return [];
+    // Usamos o inputs ORIGINAL aqui para que a curva seja baseada no ponto zero sempre
+    const basePrice = initialInputs.PVS || 0;
+    if (basePrice <= 0) return [];
 
     const points = [];
-    for (let i = -5; i <= 5; i++) {
-        const variation = i * 0.05; 
-        const price = currentPrice * (1 + variation);
-        const simInputs = { ...inputs, PVS: price, Meta: inputs.Meta };
+    // Gera curva de -50% a +50%
+    for (let i = -10; i <= 10; i++) {
+        const variation = i * 0.05; // 5% steps
+        const price = basePrice * (1 + variation);
+        const simInputs = { ...initialInputs, PVS: price, Meta: initialInputs.Meta };
         const simResult = calculateFinancials(CalculationMode.DIRECT, simInputs);
         points.push({
-            variation: `${(variation * 100).toFixed(0)}%`,
+            variationPercent: Math.round(variation * 100),
             price: price,
             lucro: simResult.LL,
-            isCurrent: i === 0
+            // O ponto "atual" no gráfico é onde o slider está, não necessariamente o zero
+            isCurrent: Math.round(variation * 100) === priceSensitivity
         });
     }
     return points;
-  }, [result.PVS, inputs, mode]);
+  }, [initialInputs, mode, priceSensitivity]); // Recalcula o "ponto atual" quando o slider move
 
   const formatAxisValue = (value: number) => {
     let prefix = '$';
@@ -254,8 +259,30 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
         .recharts-sector:focus { outline: none !important; }
       `}</style>
       
+      {/* AVISO DE SIMULAÇÃO */}
+      {isSimulating && (
+        <div className="bg-indigo-600 text-white px-6 py-3 rounded-xl shadow-lg shadow-indigo-900/20 flex items-center justify-between animate-in slide-in-from-top-2 no-print">
+           <div className="flex items-center gap-3">
+             <div className="bg-white/20 p-2 rounded-lg"><Activity size={20}/></div>
+             <div>
+               <p className="font-bold text-sm">Modo Simulação Ativo</p>
+               <p className="text-xs text-indigo-100 opacity-90">
+                 Preço alterado em <span className="font-bold">{priceSensitivity > 0 ? '+' : ''}{priceSensitivity}%</span>. Todos os gráficos abaixo mostram este cenário hipotético.
+               </p>
+             </div>
+           </div>
+           <button 
+             onClick={() => setPriceSensitivity(0)}
+             className="px-3 py-1.5 bg-white text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-50 transition-colors flex items-center gap-1"
+           >
+             <RefreshCcw size={12} /> Restaurar
+           </button>
+        </div>
+      )}
+
       {/* Header Impressão */}
       <div className="hidden pdf-mode mb-8 border-b-2 border-slate-200 pb-4">
+        {/* ... Header content same as before ... */}
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-3">
              <div className="bg-[#1C3A5B] p-2 rounded-lg text-white">
@@ -269,11 +296,12 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
           <div className="text-right">
             <p className="text-sm font-bold text-slate-700">{new Date().toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US')}</p>
             <div className="mt-2 inline-block bg-slate-100 px-2 py-1 rounded text-xs font-bold uppercase text-slate-600">
-               {mode}
+               {mode} {isSimulating ? '(Simulado)' : ''}
             </div>
           </div>
         </div>
-        {/* Resumo Inputs Impressão */}
+        
+        {/* Resumo Inputs (Usa effectiveInputs) */}
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 break-inside-avoid">
            <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">
              <List size={12}/> {t.results.assumptions}
@@ -281,43 +309,146 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
            <div className="grid grid-cols-4 gap-y-2 gap-x-8 text-sm">
               <div className="flex justify-between border-b border-slate-200 pb-1">
                 <span className="text-slate-500">{t.inputs.labels.cp}:</span>
-                <span className="font-mono font-bold text-slate-700">{fmtCurrency(inputs.CP || 0)}</span>
+                <span className="font-mono font-bold text-slate-700">{fmtCurrency(effectiveInputs.CP || 0)}</span>
               </div>
               <div className="flex justify-between border-b border-slate-200 pb-1">
                 <span className="text-slate-500">{t.inputs.labels.pvs}:</span>
-                <span className="font-mono font-bold text-slate-700">{fmtCurrency(result.PVS)}</span>
+                <span className="font-mono font-bold text-slate-700">{fmtCurrency(effectiveResult.PVS)}</span>
               </div>
               <div className="flex justify-between border-b border-slate-200 pb-1">
                 <span className="text-slate-500">{t.inputs.labels.meta}:</span>
-                <span className="font-mono font-bold text-slate-700">{inputs.Meta || result.Meta} un</span>
+                <span className="font-mono font-bold text-slate-700">{effectiveInputs.Meta || effectiveResult.Meta} un</span>
               </div>
               <div className="flex justify-between border-b border-slate-200 pb-1">
                 <span className="text-slate-500">{t.inputs.labels.marketing}:</span>
-                <span className="font-mono font-bold text-slate-700">{fmtCurrency(inputs.Marketing || 0)}</span>
+                <span className="font-mono font-bold text-slate-700">{fmtCurrency(effectiveInputs.Marketing || 0)}</span>
               </div>
            </div>
         </div>
       </div>
       
-      {/* KPI Cards */}
+      {/* SIMULADOR DE SENSIBILIDADE (Agora no topo para controle global) */}
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col print-chart-fix pdf-avoid-break">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Activity className="text-indigo-500" size={20} />
+                {t.results.charts.sensitivity}
+              </h3>
+              <p className="text-sm text-slate-400 mt-1">
+                Arraste para simular novos preços e ver o impacto em todo o painel.
+              </p>
+            </div>
+            {priceSensitivity !== 0 && (
+               <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-800 animate-pulse">
+                 Simulando: {fmtCurrency(effectiveResult.PVS)} ({priceSensitivity > 0 ? '+' : ''}{priceSensitivity}%)
+               </div>
+            )}
+          </div>
+
+          {/* SLIDER CONTROL */}
+          <div className="mb-8 px-2">
+             <input 
+               type="range" 
+               min="-50" 
+               max="50" 
+               step="1"
+               value={priceSensitivity}
+               onChange={(e) => setPriceSensitivity(parseInt(e.target.value))}
+               className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-[#1C3A5B] dark:accent-blue-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+             />
+             <div className="flex justify-between text-[10px] font-bold text-slate-400 mt-3">
+                <span>-50%</span>
+                <span 
+                  className="text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded cursor-pointer hover:bg-slate-200"
+                  onClick={() => setPriceSensitivity(0)}
+                >
+                  0% (Reset)
+                </span>
+                <span>+50%</span>
+             </div>
+          </div>
+
+          <div className="flex-1 w-full h-[250px]">
+             <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={sensitivityData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode && !isGeneratingPdf ? "#334155" : "#f1f5f9"} />
+                   <XAxis 
+                     dataKey="price" 
+                     tickFormatter={(val) => {
+                       let prefix = '$';
+                       if (currency === 'BRL') prefix = 'R$';
+                       else if (currency === 'EUR') prefix = '€';
+                       return `${prefix}${val.toFixed(0)}`;
+                     }}
+                     tick={{fill: isDarkMode && !isGeneratingPdf ? '#94a3b8' : '#64748b', fontSize: 11}}
+                     axisLine={false}
+                     tickLine={false}
+                   />
+                   <YAxis 
+                     tickFormatter={formatAxisValue}
+                     tick={{fill: isDarkMode && !isGeneratingPdf ? '#94a3b8' : '#64748b', fontSize: 11}}
+                     axisLine={false}
+                     tickLine={false}
+                     width={50}
+                   />
+                   <Tooltip 
+                     contentStyle={{
+                         borderRadius: '12px', 
+                         border: 'none', 
+                         boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                         backgroundColor: isDarkMode && !isGeneratingPdf ? '#1e293b' : '#fff',
+                         color: isDarkMode && !isGeneratingPdf ? '#f8fafc' : '#334155'
+                     }}
+                     formatter={(value: number) => [fmtCurrency(value), t.results.kpi.ll]}
+                     labelFormatter={(label) => `${t.results.kpi.sub.val_unit}: ${fmtCurrency(label as number)}`}
+                   />
+                   <ReferenceLine x={initialResult.PVS} stroke="#94a3b8" strokeDasharray="3 3" label={{ value: 'Original', position: 'top', fill: isDarkMode && !isGeneratingPdf ? '#94a3b8' : '#64748b', fontSize: 10 }} />
+                   <ReferenceLine y={0} stroke="#E53935" strokeOpacity={0.5} />
+                   
+                   <Line 
+                     type="monotone" 
+                     dataKey="lucro" 
+                     stroke={isDarkMode && !isGeneratingPdf ? '#4CAF50' : '#4CAF50'} 
+                     strokeWidth={3}
+                     dot={false}
+                     activeDot={false}
+                     isAnimationActive={!isGeneratingPdf}
+                   />
+
+                   {/* Ponto Dinâmico (Bolha) que segue o Slider */}
+                   <ReferenceDot 
+                      x={effectiveResult.PVS} 
+                      y={effectiveResult.LL} 
+                      r={6} 
+                      fill="#1C3A5B" 
+                      stroke="white" 
+                      strokeWidth={2}
+                   />
+                </LineChart>
+             </ResponsiveContainer>
+          </div>
+      </div>
+
+      {/* KPI Cards (Atualizados com effectiveResult) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print-break-inside pdf-avoid-break">
         <KPICard 
           title={t.results.kpi.ll} 
-          value={fmtCurrency(result.LL)} 
-          subtitle={`${t.results.kpi.sub.margin}: ${fmtPercent(result.MLL_Real)}`}
+          value={fmtCurrency(effectiveResult.LL)} 
+          subtitle={`${t.results.kpi.sub.margin}: ${fmtPercent(effectiveResult.MLL_Real)}`}
           icon={Wallet}
-          theme={result.LL >= 0 ? "emerald" : "red"}
+          theme={effectiveResult.LL >= 0 ? "emerald" : "red"}
         />
         <KPICard 
           title={t.results.kpi.mc} 
-          value={fmtCurrency(result.MC_Real)} 
+          value={fmtCurrency(effectiveResult.MC_Real)} 
           subtitle={t.results.kpi.sub.sobra}
           icon={TrendingUp}
           theme="blue"
         />
         <KPICard 
           title={t.results.kpi.pe} 
-          value={`${result.PE_UN}`} 
+          value={`${effectiveResult.PE_UN}`} 
           subtitle={t.results.kpi.sub.zerar}
           icon={Scale}
           theme="amber"
@@ -325,8 +456,8 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
         />
         <KPICard 
           title={mode === CalculationMode.TARGET_PRICE ? t.results.kpi.suggested_price : t.results.kpi.price} 
-          value={fmtCurrency(result.PVS)} 
-          subtitle={mode === CalculationMode.TARGET_VOLUME ? `${t.results.kpi.sub.meta}: ${result.Meta} un.` : t.results.kpi.sub.val_unit}
+          value={fmtCurrency(effectiveResult.PVS)} 
+          subtitle={mode === CalculationMode.TARGET_VOLUME ? `${t.results.kpi.sub.meta}: ${effectiveResult.Meta} un.` : t.results.kpi.sub.val_unit}
           icon={DollarSign}
           theme="violet"
         />
@@ -337,7 +468,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
           <AdUnit slotId="0987654321" format="horizontal" testMode={true} className="w-full max-w-3xl" />
       </div>
 
-      {/* Gráficos */}
+      {/* Gráficos Principais (Atualizados com effectiveResult) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print-break-inside pdf-avoid-break">
         
         {/* Gráfico de Barras */}
@@ -407,21 +538,21 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
                 <Bar dataKey="Receita" fill={isDarkMode && !isGeneratingPdf ? "#3b82f6" : "#1C3A5B"} radius={[4, 4, 0, 0]} isAnimationActive={!isGeneratingPdf} />
                 <Bar dataKey="Custos" fill={isDarkMode && !isGeneratingPdf ? "#64748b" : "#94a3b8"} radius={[4, 4, 0, 0]} isAnimationActive={!isGeneratingPdf} />
-                <Bar dataKey="Lucro" fill={result.LL >= 0 ? "#4CAF50" : "#E53935"} radius={[4, 4, 0, 0]} isAnimationActive={!isGeneratingPdf} />
+                <Bar dataKey="Lucro" fill={effectiveResult.LL >= 0 ? "#4CAF50" : "#E53935"} radius={[4, 4, 0, 0]} isAnimationActive={!isGeneratingPdf} />
                 <ReferenceLine y={0} stroke={isDarkMode && !isGeneratingPdf ? "#475569" : "#cbd5e1"} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Gráfico de Pizza (Mantido igual) */}
+        {/* Gráfico de Pizza (Atualizado) */}
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col min-h-[400px] break-inside-avoid print-chart-fix">
           <div className="mb-2">
             <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <PieIcon className="text-slate-400" size={20} />
               {t.results.charts.composition}
             </h3>
-            <p className="text-sm text-slate-400 mt-1">{t.results.charts.detail}: {fmtCurrency(result.PVS)}</p>
+            <p className="text-sm text-slate-400 mt-1">{t.results.charts.detail}: {fmtCurrency(effectiveResult.PVS)}</p>
           </div>
 
           <div className="flex-1 w-full relative h-[300px]">
@@ -443,7 +574,7 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomPieTooltip isDarkMode={isDarkMode && !isGeneratingPdf} total={result.PVS} fmtCurrency={fmtCurrency} />} />
+                <Tooltip content={<CustomPieTooltip isDarkMode={isDarkMode && !isGeneratingPdf} total={effectiveResult.PVS} fmtCurrency={fmtCurrency} />} />
                 <Legend 
                   layout="horizontal" 
                   verticalAlign="bottom" 
@@ -457,82 +588,14 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
                <div className="text-center">
                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Preço</span>
-                 <span className="text-xl font-bold text-[#1C3A5B] dark:text-blue-400">{fmtCurrency(result.PVS)}</span>
+                 <span className="text-xl font-bold text-[#1C3A5B] dark:text-blue-400">{fmtCurrency(effectiveResult.PVS)}</span>
                </div>
             </div>
           </div>
         </div>
       </div>
-      
-      {/* ... Gráficos e Tabelas restantes iguais, apenas renderização ... */}
-      
-      {/* NOVO: Gráfico de Sensibilidade */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col print-chart-fix pdf-avoid-break">
-          <div className="mb-6">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Activity className="text-indigo-500" size={20} />
-              {t.results.charts.sensitivity}
-            </h3>
-            <p className="text-sm text-slate-400 mt-1">
-              {t.results.charts.sensitivity_desc}
-            </p>
-          </div>
-          <div className="flex-1 w-full h-[300px]">
-             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sensitivityData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
-                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode && !isGeneratingPdf ? "#334155" : "#f1f5f9"} />
-                   <XAxis 
-                     dataKey="price" 
-                     tickFormatter={(val) => {
-                       let prefix = '$';
-                       if (currency === 'BRL') prefix = 'R$';
-                       else if (currency === 'EUR') prefix = '€';
-                       return `${prefix}${val.toFixed(0)}`;
-                     }}
-                     tick={{fill: isDarkMode && !isGeneratingPdf ? '#94a3b8' : '#64748b', fontSize: 11}}
-                     axisLine={false}
-                     tickLine={false}
-                   />
-                   <YAxis 
-                     tickFormatter={formatAxisValue}
-                     tick={{fill: isDarkMode && !isGeneratingPdf ? '#94a3b8' : '#64748b', fontSize: 11}}
-                     axisLine={false}
-                     tickLine={false}
-                     width={50}
-                   />
-                   <Tooltip 
-                     contentStyle={{
-                         borderRadius: '12px', 
-                         border: 'none', 
-                         boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                         backgroundColor: isDarkMode && !isGeneratingPdf ? '#1e293b' : '#fff',
-                         color: isDarkMode && !isGeneratingPdf ? '#f8fafc' : '#334155'
-                     }}
-                     formatter={(value: number) => [fmtCurrency(value), t.results.kpi.ll]}
-                     labelFormatter={(label) => `${t.results.kpi.sub.val_unit}: ${fmtCurrency(label as number)}`}
-                   />
-                   <ReferenceLine x={result.PVS} stroke="#1C3A5B" strokeDasharray="3 3" label={{ value: 'Atual', position: 'top', fill: isDarkMode && !isGeneratingPdf ? '#94a3b8' : '#64748b', fontSize: 10 }} />
-                   <ReferenceLine y={0} stroke="#E53935" strokeOpacity={0.5} />
-                   <Line 
-                     type="monotone" 
-                     dataKey="lucro" 
-                     stroke={isDarkMode && !isGeneratingPdf ? '#4CAF50' : '#4CAF50'} 
-                     strokeWidth={3}
-                     dot={(props: any) => {
-                         if (props.payload.isCurrent) {
-                             return <circle cx={props.cx} cy={props.cy} r={6} fill="#1C3A5B" stroke="white" strokeWidth={2} />;
-                         }
-                         return <circle cx={props.cx} cy={props.cy} r={0} />;
-                     }}
-                     activeDot={{ r: 6 }}
-                     isAnimationActive={!isGeneratingPdf}
-                   />
-                </LineChart>
-             </ResponsiveContainer>
-          </div>
-      </div>
 
-      {/* Tabela */}
+      {/* Tabela de Detalhamento (Atualizada) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print-break-inside pdf-avoid-break">
         <div className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col transition-colors">
            <div className="p-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm flex items-center gap-2">
@@ -542,14 +605,14 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
            <div className="flex-1 overflow-auto">
              <table className="w-full text-sm text-left">
                 <tbody className="divide-y divide-slate-100/80 dark:divide-slate-700/50">
-                    <TableRow label={t.results.table.revenue} value={result.Revenue} bold tooltip={t.results.tooltips.revenue} fmtCurrency={fmtCurrency} />
-                    <TableRow label={t.results.table.fixed_costs} value={inputs.CF || 0} isNegative tooltip={t.results.tooltips.fixed} fmtCurrency={fmtCurrency} />
-                    <TableRow label={t.results.table.marketing} value={inputs.Marketing || 0} isNegative tooltip={t.results.tooltips.marketing} fmtCurrency={fmtCurrency} />
-                    <TableRow label={t.results.table.variable_costs} value={result.CV_UN * result.Meta} isNegative subLabel={`${fmtCurrency(result.CV_UN)}/un`} tooltip={t.results.tooltips.variable} fmtCurrency={fmtCurrency} />
+                    <TableRow label={t.results.table.revenue} value={effectiveResult.Revenue} bold tooltip={t.results.tooltips.revenue} fmtCurrency={fmtCurrency} />
+                    <TableRow label={t.results.table.fixed_costs} value={effectiveInputs.CF || 0} isNegative tooltip={t.results.tooltips.fixed} fmtCurrency={fmtCurrency} />
+                    <TableRow label={t.results.table.marketing} value={effectiveInputs.Marketing || 0} isNegative tooltip={t.results.tooltips.marketing} fmtCurrency={fmtCurrency} />
+                    <TableRow label={t.results.table.variable_costs} value={effectiveResult.CV_UN * effectiveResult.Meta} isNegative subLabel={`${fmtCurrency(effectiveResult.CV_UN)}/un`} tooltip={t.results.tooltips.variable} fmtCurrency={fmtCurrency} />
                     <TableRow 
                       label={t.results.table.markup} 
-                      customFormattedValue={(inputs.CP || 0) > 0 ? `${result.Markup.toFixed(2)}x` : 'N/A'}
-                      subLabel={(inputs.CP || 0) > 0 ? "Sobre CP" : "Sem CP"}
+                      customFormattedValue={(effectiveInputs.CP || 0) > 0 ? `${effectiveResult.Markup.toFixed(2)}x` : 'N/A'}
+                      subLabel={(effectiveInputs.CP || 0) > 0 ? "Sobre CP" : "Sem CP"}
                       tooltip={t.results.tooltips.markup}
                     />
                     <tr className="bg-slate-50 dark:bg-slate-700/30">
@@ -559,25 +622,25 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                     </tr>
                     <TableRow 
                       label={t.results.table.pe_unit} 
-                      customFormattedValue={`${result.PE_UN} un`}
+                      customFormattedValue={`${effectiveResult.PE_UN} un`}
                       tooltip={t.results.tooltips.pe}
                     />
                      <TableRow 
                       label={t.results.table.pe_rev} 
-                      value={result.PE_Valor}
+                      value={effectiveResult.PE_Valor}
                       tooltip={t.results.tooltips.pe}
                       fmtCurrency={fmtCurrency}
                     />
                      <TableRow 
                       label={t.results.table.margin_safety} 
-                      customFormattedValue={fmtPercent(result.MarginSafety * 100)}
+                      customFormattedValue={fmtPercent(effectiveResult.MarginSafety * 100)}
                       isStatus={true}
-                      statusColor={result.MarginSafety > 0 ? 'text-emerald-600' : 'text-red-500'}
+                      statusColor={effectiveResult.MarginSafety > 0 ? 'text-emerald-600' : 'text-red-500'}
                       tooltip={t.results.tooltips.safety}
                     />
                     <TableRow 
                       label={t.results.table.mmc} 
-                      value={result.MMC} 
+                      value={effectiveResult.MMC} 
                       subLabel="Absorção CF"
                       tooltip={t.results.tooltips.mmc}
                       fmtCurrency={fmtCurrency}
@@ -589,44 +652,44 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                     </tr>
                     <TableRow 
                       label={t.results.table.cac} 
-                      value={result.CAC} 
+                      value={effectiveResult.CAC} 
                       subLabel="Custo Aquisição"
                       tooltip={t.results.tooltips.cac}
                       fmtCurrency={fmtCurrency}
                     />
                      <TableRow 
                       label={t.results.table.payback} 
-                      customFormattedValue={result.Payback > 0 ? `${result.Payback.toFixed(1)} m.` : "N/A"}
+                      customFormattedValue={effectiveResult.Payback > 0 ? `${effectiveResult.Payback.toFixed(1)} m.` : "N/A"}
                       subLabel="Recuperação"
                       isStatus={true}
-                      statusColor={result.Payback <= 6 ? 'text-emerald-600' : result.Payback <= 12 ? 'text-amber-500' : 'text-red-500'}
+                      statusColor={effectiveResult.Payback <= 6 ? 'text-emerald-600' : effectiveResult.Payback <= 12 ? 'text-amber-500' : 'text-red-500'}
                       tooltip={t.results.tooltips.payback}
                     />
                     <TableRow 
                       label={t.results.table.ltv} 
-                      value={result.LTV} 
+                      value={effectiveResult.LTV} 
                       subLabel="Valor Vitalício"
                       tooltip={t.results.tooltips.ltv}
                       fmtCurrency={fmtCurrency}
                     />
                      <TableRow 
                       label={t.results.table.lifetime} 
-                      customFormattedValue={result.Lifetime > 0 ? `${result.Lifetime.toFixed(1)} m.` : "-"}
+                      customFormattedValue={effectiveResult.Lifetime > 0 ? `${effectiveResult.Lifetime.toFixed(1)} m.` : "-"}
                       subLabel="Retenção"
                       tooltip={t.results.tooltips.lifetime}
                     />
                     <TableRow 
                       label={t.results.table.ratio} 
-                      customFormattedValue={`${result.LTV_CAC_Ratio.toFixed(1)}x`}
+                      customFormattedValue={`${effectiveResult.LTV_CAC_Ratio.toFixed(1)}x`}
                       isStatus={true}
-                      statusColor={result.LTV_CAC_Ratio >= 3 ? 'text-emerald-600' : (result.LTV_CAC_Ratio >= 1 ? 'text-amber-500' : 'text-red-500')}
+                      statusColor={effectiveResult.LTV_CAC_Ratio >= 3 ? 'text-emerald-600' : (effectiveResult.LTV_CAC_Ratio >= 1 ? 'text-amber-500' : 'text-red-500')}
                       tooltip={t.results.tooltips.ratio}
                     />
                     <TableRow 
                       label={t.results.table.roi} 
-                      customFormattedValue={fmtPercent(result.ROI)}
+                      customFormattedValue={fmtPercent(effectiveResult.ROI)}
                       isStatus={true}
-                      statusColor={result.ROI > 0 ? 'text-emerald-600' : 'text-red-500'}
+                      statusColor={effectiveResult.ROI > 0 ? 'text-emerald-600' : 'text-red-500'}
                       tooltip={t.results.tooltips.roi}
                     />
                      <tr className="bg-indigo-50 dark:bg-indigo-900/10 border-t border-indigo-100 dark:border-indigo-800">
@@ -636,15 +699,15 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
                               <CalendarRange size={14} /> {t.results.table.projection}
                             </div>
                             <div className="font-mono font-bold text-sm text-indigo-700 dark:text-indigo-300">
-                               {fmtCurrency(result.LL * 12)}
+                               {fmtCurrency(effectiveResult.LL * 12)}
                             </div>
                          </div>
                       </td>
                     </tr>
                     <tr className="bg-slate-100/50 dark:bg-slate-700/50 border-t-2 border-slate-100 dark:border-slate-600">
                         <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100 text-sm">{t.results.kpi.ll}</td>
-                        <td className={`px-6 py-4 text-right font-bold text-sm ${result.LL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                           {fmtCurrency(result.LL)}
+                        <td className={`px-6 py-4 text-right font-bold text-sm ${effectiveResult.LL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                           {fmtCurrency(effectiveResult.LL)}
                         </td>
                     </tr>
                 </tbody>

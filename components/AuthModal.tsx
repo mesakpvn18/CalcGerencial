@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { X, LogIn, UserPlus, Database, AlertCircle, CheckCircle, Mail, ArrowRight } from 'lucide-react';
 import { initSupabase, signIn, signUp, isSupabaseConfigured } from '../services/supabase';
@@ -67,18 +66,18 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, onLoginSuccess, language 
           // Exibe tela de sucesso
           setShowLoginSuccess(true);
           
-          // Aguarda 1.5 segundos para o usuário ver a animação antes de fechar
+          // Aguarda 2 segundos para o usuário ver a animação antes de fechar
           setTimeout(() => {
             onLoginSuccess(user);
             onClose();
-            // Reseta estados após fechar
+            // Reseta estados após fechar para a próxima vez
             setTimeout(() => {
               setShowLoginSuccess(false);
               setLoading(false);
               setEmail('');
               setPassword('');
             }, 300);
-          }, 1500);
+          }, 2000);
         }
       } else {
         const { user } = await signUp(email, password);
@@ -87,6 +86,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, onLoginSuccess, language 
              setShowSignupSuccess(true);
              setLoading(false);
           } else {
+             // Caso o Supabase esteja configurado para não exigir confirmação de email
              onLoginSuccess(user);
              onClose();
           }
@@ -120,7 +120,7 @@ const AuthModal: React.FC<Props> = ({ isOpen, onClose, onLoginSuccess, language 
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
       
       {/* Modal */}
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transition-all duration-300 border border-slate-200 dark:border-slate-800 min-h-[420px] flex flex-col transform scale-100 opacity-100">
+      <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transition-all duration-300 border border-slate-200 dark:border-slate-800 min-h-[420px] flex flex-col">
         
         {/* === TELA DE SUCESSO AO CRIAR CONTA === */}
         {showSignupSuccess ? (
