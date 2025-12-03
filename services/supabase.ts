@@ -113,9 +113,6 @@ export const signOut = async () => {
 
 // --- PROFILE FUNCTIONS ---
 
-// Lembre-se de rodar o SQL no painel do Supabase para criar a tabela 'profiles'
-// com a coluna 'is_pro' boolean default false.
-
 const createProfile = async (userId: string, email: string) => {
   if (!supabase) return;
   const { error } = await supabase
@@ -218,4 +215,27 @@ export const deleteSimulation = async (id: string | number) => {
     .delete()
     .eq('id', id);
   if (error) throw error;
+};
+
+// --- ERROR TRACKING ---
+
+export const logSystemError = async (message: string, stack: string, source: string, metadata: any = {}) => {
+  if (!supabase) return;
+  
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id || null;
+
+    // Tenta inserir na tabela error_logs. Se a tabela não existir, vai falhar silenciosamente no catch.
+    await supabase.from('error_logs').insert([{
+      user_id: userId,
+      message,
+      stack,
+      source,
+      metadata
+    }]);
+  } catch (e) {
+    // Falha silenciosa para não gerar loop de erros
+    console.warn("Falha ao enviar log de erro para o Supabase");
+  }
 };
