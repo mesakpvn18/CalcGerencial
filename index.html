@@ -2,11 +2,23 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1C3A5B" />
+    <meta name="description" content="Assistente Financeiro para Negócios Digitais e Assinaturas." />
+    
+    <!-- PWA Config -->
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2910/2910768.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FinCalc" />
+
     <title>FinCalc Digital - Assistente Financeiro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
     <script>
-      // Polyfill process to prevent Uncaught ReferenceError in libraries
+      // Polyfill process
       window.process = { env: { NODE_ENV: 'production' } };
 
       tailwind.config = {
@@ -23,15 +35,25 @@
           }
         }
       }
+
+      // Register Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./serviceWorker.js')
+            .then(reg => console.log('SW registrado!', reg))
+            .catch(err => console.log('SW falhou:', err));
+        });
+      }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      body { font-family: 'Inter', sans-serif; }
+      body { font-family: 'Inter', sans-serif; overscroll-behavior-y: none; }
+      
+      /* PWA Install Button Prompt Styling (Optional if you want a custom prompt later) */
       
       @media print {
         @page { margin: 1cm; size: landscape; }
         
-        /* Força reset total para garantir leitura no papel/PDF */
         body { 
           background-color: white !important; 
           color: black !important; 
@@ -39,18 +61,25 @@
           print-color-adjust: exact; 
         }
 
-        /* Esconde elementos de UI */
-        .no-print, header, footer, button { display: none !important; }
+        /* Reset Grid Layout for Print */
+        .print\:block { display: block !important; }
+        .print\:w-full { width: 100% !important; max-width: none !important; }
         
-        /* Garante quebras de página inteligentes */
+        /* Hide UI */
+        .no-print, header, footer, button, .input-section { display: none !important; }
+        
+        /* Layout Fixes */
+        #root, main { display: block !important; height: auto !important; overflow: visible !important; }
+        
+        /* Force PDF Header visibility */
+        .pdf-mode { display: block !important; }
+        
         .print-break-inside { break-inside: avoid; }
         .break-inside-avoid { break-inside: avoid; }
         
-        /* Limpa sombras e bordas escuras */
         * { box-shadow: none !important; text-shadow: none !important; }
         .dark { background-color: white !important; color: black !important; }
         
-        /* CORREÇÃO CRÍTICA PARA GRÁFICOS RECHARTS EM PDF */
         .recharts-wrapper, .recharts-surface { overflow: visible !important; }
         .print-chart-fix {
           height: 350px !important;
@@ -60,7 +89,6 @@
           page-break-inside: avoid;
         }
         
-        /* Esconde scrollbars */
         ::-webkit-scrollbar { display: none; }
       }
     </style>

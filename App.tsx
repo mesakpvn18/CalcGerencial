@@ -6,7 +6,7 @@ import InputSection from './components/InputSection';
 import ResultsSection from './components/ResultsSection';
 import HistoryModal from './components/HistoryModal';
 import EducationalGuide from './components/EducationalGuide';
-import { DollarSign, Moon, Sun, Clock, Share2, Check, BookOpen } from 'lucide-react';
+import { DollarSign, Moon, Sun, Clock, Share2, Check, BookOpen, DownloadCloud } from 'lucide-react';
 
 const DEFAULT_INPUTS: FinancialInputs = {
   CP: 25.00,
@@ -52,6 +52,9 @@ function App() {
   });
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+
+  // PWA Install State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   // App State - Initialize from URL or Default
   const [mode, setMode] = useState<CalculationMode>(() => {
@@ -115,6 +118,16 @@ function App() {
       // Ignora erro se localStorage estiver bloqueado
     }
   }, [isDarkMode]);
+
+  // PWA Install Prompt Listener
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   // DEBOUNCE EFFECT FOR HISTORY SAVING
   useEffect(() => {
@@ -201,6 +214,15 @@ function App() {
     }
   };
 
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
+
   const handleSaveHistory = () => {
     if (result && result.isValid) {
       let randomId = '';
@@ -251,6 +273,17 @@ function App() {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+             {deferredPrompt && (
+               <button
+                 onClick={handleInstallClick}
+                 className="p-2 text-[#1C3A5B] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors flex items-center gap-2 group animate-in fade-in"
+                 title="Instalar Aplicativo"
+               >
+                 <DownloadCloud size={20} />
+                 <span className="hidden sm:inline text-xs font-bold">Instalar App</span>
+               </button>
+             )}
+
              <button
               onClick={() => setIsGuideOpen(true)}
               className="p-2 text-[#1C3A5B] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors flex items-center gap-2 group"
