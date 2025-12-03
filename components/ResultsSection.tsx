@@ -81,35 +81,45 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
 
     setIsGeneratingPdf(true);
     
+    // 1. Scroll para o topo para garantir captura correta
+    window.scrollTo(0, 0);
+    
     const element = document.getElementById('printable-dashboard');
     if (!element) {
       setIsGeneratingPdf(false);
       return;
     }
 
+    // 2. Preparação do DOM
     const wasDarkMode = document.documentElement.classList.contains('dark');
-    if (wasDarkMode) {
-      document.documentElement.classList.remove('dark');
-    }
+    if (wasDarkMode) document.documentElement.classList.remove('dark');
 
-    const originalWidth = element.style.width;
-    const originalPadding = element.style.padding;
+    // Salva estilos originais
+    const originalStyle = {
+      width: element.style.width,
+      padding: element.style.padding,
+      margin: element.style.margin,
+      height: element.style.height,
+      minHeight: element.style.minHeight
+    };
     
-    element.style.width = '1120px'; 
+    // 3. Aplica estilos de "Impressão Perfeita"
+    // Remove alturas mínimas que causam páginas em branco
+    element.style.width = '1120px'; // Largura fixa A4 landscape ajustada
     element.style.padding = '40px';
+    element.style.margin = '0 auto';
+    element.style.height = 'auto'; 
+    element.style.minHeight = '0px';
     element.classList.add('pdf-generation-active');
 
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Pequeno delay para o React renderizar o layout novo (header visível, etc)
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // @ts-ignore
     if (typeof window.html2pdf === 'undefined') {
-       try {
-         window.print();
-       } catch (e) {
-         alert("Erro ao gerar PDF. Tente Ctrl+P.");
-       }
-       element.style.width = originalWidth;
-       element.style.padding = originalPadding;
+       alert("Biblioteca PDF não carregada. Use Ctrl+P.");
+       // Restaura
+       Object.assign(element.style, originalStyle);
        element.classList.remove('pdf-generation-active');
        if (wasDarkMode) document.documentElement.classList.add('dark');
        setIsGeneratingPdf(false);
@@ -117,10 +127,17 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
     }
 
     const opt = {
-      margin:       [5, 5, 5, 5], 
+      margin:       [0, 0, 0, 0], // Margem zero pois controlamos via padding no elemento
       filename:     `FinCalc_Report_${new Date().toISOString().split('T')[0]}.pdf`,
-      image:        { type: 'jpeg', quality: 1 },
-      html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1200, backgroundColor: '#ffffff' },
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false, 
+        windowWidth: 1120, // Coincide com a largura do elemento
+        scrollY: 0, // Importante para não capturar scroll
+        height: element.scrollHeight // Captura apenas a altura real do conteúdo
+      },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
       pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
     };
@@ -132,12 +149,10 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
       console.error("PDF Error:", e);
       alert("Erro ao gerar PDF.");
     } finally {
-      element.style.width = originalWidth;
-      element.style.padding = originalPadding;
+      // 4. Restaura estado original
+      Object.assign(element.style, originalStyle);
       element.classList.remove('pdf-generation-active');
-      if (wasDarkMode) {
-        document.documentElement.classList.add('dark');
-      }
+      if (wasDarkMode) document.documentElement.classList.add('dark');
       setIsGeneratingPdf(false);
     }
   };
@@ -280,48 +295,51 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
         </div>
       )}
 
-      {/* Header Impressão */}
-      <div className="hidden pdf-mode mb-8 border-b-2 border-slate-200 pb-4">
-        {/* ... Header content same as before ... */}
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex items-center gap-3">
-             <div className="bg-[#1C3A5B] p-2 rounded-lg text-white">
-               <DollarSign size={24} />
+      {/* Header Impressão - PAPEL TIMBRADO */}
+      <div className="hidden pdf-mode mb-8 bg-white">
+        {/* Barra de Marca Superior */}
+        <div className="w-full h-3 bg-[#1C3A5B] mb-6"></div>
+        
+        <div className="flex justify-between items-end px-2 mb-6">
+          <div className="flex items-center gap-4">
+             <div className="bg-[#1C3A5B] p-3 rounded-xl text-white">
+               <DollarSign size={32} />
              </div>
              <div>
-               <h1 className="text-2xl font-bold text-[#1C3A5B]">FinCalc Digital</h1>
-               <p className="text-sm text-slate-500">{t.results.header}</p>
+               <h1 className="text-3xl font-bold text-[#1C3A5B] leading-none">FinCalc Digital</h1>
+               <p className="text-sm text-slate-500 font-medium mt-1 uppercase tracking-wide">Relatório de Viabilidade Financeira</p>
              </div>
           </div>
           <div className="text-right">
-            <p className="text-sm font-bold text-slate-700">{new Date().toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US')}</p>
-            <div className="mt-2 inline-block bg-slate-100 px-2 py-1 rounded text-xs font-bold uppercase text-slate-600">
-               {mode} {isSimulating ? '(Simulado)' : ''}
+            <p className="text-xs font-bold text-slate-400 uppercase">Gerado em</p>
+            <p className="text-lg font-bold text-slate-800">{new Date().toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US')} às {new Date().toLocaleTimeString()}</p>
+            <div className="mt-2 inline-flex items-center gap-2 bg-slate-100 px-3 py-1 rounded text-xs font-bold uppercase text-slate-600 border border-slate-200">
+               {mode} {isSimulating ? '(SIMULADO)' : ''}
             </div>
           </div>
         </div>
-        
+
         {/* Resumo Inputs (Usa effectiveInputs) */}
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 break-inside-avoid">
-           <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">
-             <List size={12}/> {t.results.assumptions}
+        <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 break-inside-avoid">
+           <h4 className="text-xs font-bold text-slate-400 uppercase mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
+             <List size={14}/> {t.results.assumptions}
            </h4>
-           <div className="grid grid-cols-4 gap-y-2 gap-x-8 text-sm">
-              <div className="flex justify-between border-b border-slate-200 pb-1">
-                <span className="text-slate-500">{t.inputs.labels.cp}:</span>
-                <span className="font-mono font-bold text-slate-700">{fmtCurrency(effectiveInputs.CP || 0)}</span>
+           <div className="grid grid-cols-4 gap-8 text-sm">
+              <div>
+                <span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.cp}</span>
+                <span className="font-mono font-bold text-lg text-slate-800">{fmtCurrency(effectiveInputs.CP || 0)}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-200 pb-1">
-                <span className="text-slate-500">{t.inputs.labels.pvs}:</span>
-                <span className="font-mono font-bold text-slate-700">{fmtCurrency(effectiveResult.PVS)}</span>
+              <div>
+                <span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.pvs}</span>
+                <span className="font-mono font-bold text-lg text-slate-800">{fmtCurrency(effectiveResult.PVS)}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-200 pb-1">
-                <span className="text-slate-500">{t.inputs.labels.meta}:</span>
-                <span className="font-mono font-bold text-slate-700">{effectiveInputs.Meta || effectiveResult.Meta} un</span>
+              <div>
+                <span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.meta}</span>
+                <span className="font-mono font-bold text-lg text-slate-800">{effectiveInputs.Meta || effectiveResult.Meta} un</span>
               </div>
-              <div className="flex justify-between border-b border-slate-200 pb-1">
-                <span className="text-slate-500">{t.inputs.labels.marketing}:</span>
-                <span className="font-mono font-bold text-slate-700">{fmtCurrency(effectiveInputs.Marketing || 0)}</span>
+              <div>
+                <span className="text-slate-400 text-xs uppercase block mb-1">{t.inputs.labels.marketing}</span>
+                <span className="font-mono font-bold text-lg text-slate-800">{fmtCurrency(effectiveInputs.Marketing || 0)}</span>
               </div>
            </div>
         </div>
@@ -347,7 +365,7 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
           </div>
 
           {/* SLIDER CONTROL */}
-          <div className="mb-8 px-2">
+          <div className="mb-8 px-2" data-html2canvas-ignore="true">
              <input 
                type="range" 
                min="-50" 
@@ -781,6 +799,16 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
           </div>
         </div>
       </div>
+
+      {/* RODAPÉ DO PDF */}
+      <div className="hidden pdf-mode mt-8 pt-4 border-t border-slate-200 text-center">
+         <p className="text-[10px] text-slate-400">
+           Este relatório foi gerado automaticamente pelo <strong>FinCalc Digital</strong>. 
+           Os resultados são simulações baseadas nos dados fornecidos e não garantem lucros futuros.
+         </p>
+         <p className="text-[10px] font-bold text-[#1C3A5B] mt-1">www.fincalcdigital.app</p>
+      </div>
+
     </div>
   );
 };
@@ -834,7 +862,6 @@ const CustomPieTooltip = ({ active, payload, isDarkMode, total, fmtCurrency }: a
   return null;
 };
 
-// ... Helper Components ...
 const KPICard = ({ title, value, subtitle, icon: Icon, theme, unit }: { title: string, value: string, subtitle: string, icon: any, theme: 'emerald'|'red'|'blue'|'amber'|'violet', unit?: string }) => {
   const themes = {
     emerald: { bg: 'bg-white dark:bg-slate-800', border: 'border-[#4CAF50]/30', text: 'text-[#4CAF50]', iconBg: 'bg-[#4CAF50]/10', iconColor: 'text-[#4CAF50]' },

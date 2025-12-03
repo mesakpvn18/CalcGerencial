@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { FinancialInputs, CalculationMode, CalculationResult, HistoryItem, Language } from './types';
 import { calculateFinancials } from './utils/calculations';

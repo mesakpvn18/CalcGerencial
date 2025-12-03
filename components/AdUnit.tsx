@@ -43,8 +43,8 @@ const AdUnit: React.FC<Props> = ({ slotId, format = 'auto', layoutKey, className
         {/* @ts-ignore */}
         <ins className="adsbygoogle"
             style={{ display: 'block', width: '100%', textAlign: 'center' }}
-            data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" // SUBSTITUA PELO SEU ID REAL
-            data-ad-slot={slotId} // SUBSTITUA PELO ID DO BLOCO
+            data-ad-client="ca-pub-7421708478307814"
+            data-ad-slot={slotId}
             data-ad-format={format}
             data-full-width-responsive="true"
             data-ad-layout-key={layoutKey}

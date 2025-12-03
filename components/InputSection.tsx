@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { FinancialInputs, CalculationMode, Language } from '../types';
 import { Calculator, Target, BarChart2, Info, DollarSign, Percent, Hash, Briefcase, RotateCcw, AlertCircle, TrendingDown, Megaphone, FolderOpen, Zap, Euro } from 'lucide-react';
@@ -345,7 +344,6 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
 };
 
 // --- MASKED INPUT COMPONENT ---
-// Lida com a lógica de digitação monetária/percentual
 const MaskedInput = ({ 
   name, 
   value, 
@@ -368,25 +366,21 @@ const MaskedInput = ({
   
   // Decide o locale baseado PRIMEIRO na moeda, DEPOIS no idioma
   const getLocale = () => {
-    // Se a moeda for USD, força formato americano (1,000.00) independente do idioma
+    // Se a moeda for USD, força formato americano (1,000.00)
     if (currency === 'USD') return 'en-US';
     // Se for BRL ou EUR, tende ao formato europeu/brasileiro (1.000,00)
     if (currency === 'BRL' || currency === 'EUR') return 'pt-BR';
     
-    // Fallback padrão pelo idioma
     return language === 'pt' ? 'pt-BR' : 'en-US';
   };
 
-  // Formata o número para exibição (ex: 1000.50 -> "1.000,50")
   const formatDisplay = (val: number | undefined) => {
     if (val === undefined || val === null) return '';
     
-    // Se for inteiro, não tem decimal
     if (type === 'integer') {
       return val.toString();
     }
 
-    // Moeda ou Porcentagem: sempre 2 casas decimais na formatação "Money Mask"
     return val.toLocaleString(getLocale(), {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -395,8 +389,6 @@ const MaskedInput = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let raw = e.target.value;
-    
-    // Remove tudo que não for dígito
     const digits = raw.replace(/\D/g, '');
     
     if (!digits) {
@@ -409,8 +401,7 @@ const MaskedInput = ({
     if (type === 'integer') {
       onValueChange(numberValue);
     } else {
-      // Moeda/Percent: Divide por 100 para criar o efeito de "arrastar a vírgula"
-      // Ex: Digita '1' -> 0.01. Digita '12' -> 0.12. Digita '123' -> 1.23
+      // Divide por 100 para criar o efeito de "arrastar a vírgula"
       const floatValue = numberValue / 100;
       onValueChange(floatValue);
     }
@@ -418,8 +409,8 @@ const MaskedInput = ({
 
   return (
     <input
-      type="text" // Input text para permitir formatação livre
-      inputMode="numeric" // Teclado numérico no mobile
+      type="text" 
+      inputMode="numeric" 
       name={name}
       value={formatDisplay(value)}
       onChange={handleChange}
