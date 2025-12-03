@@ -115,7 +115,8 @@ export const translations = {
         lifetime: "Tempo de Vida",
         ratio: "Razão LTV/CAC",
         roi: "ROI Marketing",
-        projection: "Visualização Base (Mensal)",
+        projection_annual: "Projeção Anual (12 meses)",
+        projection_monthly: "Média Mensal (Base)",
         period_view: "Visão do Período"
       },
       tooltips: {
@@ -273,7 +274,8 @@ export const translations = {
         lifetime: "Lifetime",
         ratio: "LTV/CAC Ratio",
         roi: "Marketing ROI",
-        projection: "Base View (Monthly)",
+        projection_annual: "Annual Projection (12 mo)",
+        projection_monthly: "Monthly Average (Base)",
         period_view: "Period View"
       },
       tooltips: {

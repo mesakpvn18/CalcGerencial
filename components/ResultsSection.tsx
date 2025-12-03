@@ -180,10 +180,6 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
   const llLabel = `${t.results.kpi.ll} (${periodLabelText})`;
   const fixedLabel = `${t.results.table.fixed_costs}`;
 
-  // Projeção: Se estiver em mensal, mostra anual. Se estiver em outro, mostra Mensal (base).
-  const projectionValue = period === 'monthly' ? effectiveResult.LL * 12 : effectiveResult.LL;
-  const projectionLabel = period === 'monthly' ? t.results.table.projection : t.results.table.projection.replace('Projeção (12 meses)', 'Base Mensal');
-
   return (
     <div id="printable-dashboard" className="space-y-6 animate-in fade-in duration-500 pb-10">
       <style>{`.recharts-surface path { outline: none !important; } .recharts-sector:focus { outline: none !important; }`}</style>
@@ -326,8 +322,21 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
                     <TableRow label={t.results.table.ratio} customFormattedValue={`${displayResult.LTV_CAC_Ratio.toFixed(1)}x`} isStatus={true} statusColor={displayResult.LTV_CAC_Ratio >= 3 ? 'text-emerald-600' : (displayResult.LTV_CAC_Ratio >= 1 ? 'text-amber-500' : 'text-red-500')} tooltip={t.results.tooltips.ratio} />
                     <TableRow label={t.results.table.roi} customFormattedValue={fmtPercent(displayResult.ROI)} isStatus={true} statusColor={displayResult.ROI > 0 ? 'text-emerald-600' : 'text-red-500'} tooltip={t.results.tooltips.roi} />
                      
-                     {/* PROJEÇÃO DINÂMICA OU COMPARAÇÃO */}
-                     <tr className="bg-indigo-50 dark:bg-indigo-900/10 border-t border-indigo-100 dark:border-indigo-800"><td colSpan={2} className="px-6 py-3"><div className="flex justify-between items-center"><div className="flex items-center gap-2 text-indigo-800 dark:text-indigo-300 font-bold text-xs uppercase"><CalendarRange size={14} /> {projectionLabel}</div><div className="font-mono font-bold text-sm text-indigo-700 dark:text-indigo-300">{fmtCurrency(projectionValue)}</div></div></td></tr>
+                     {/* PROJEÇÃO DINÂMICA OU COMPARAÇÃO - MOSTRAR APENAS SE NÃO FOR MENSAL */}
+                     {period !== 'monthly' && (
+                       <tr className="bg-indigo-50 dark:bg-indigo-900/10 border-t border-indigo-100 dark:border-indigo-800">
+                         <td colSpan={2} className="px-6 py-3">
+                           <div className="flex justify-between items-center">
+                             <div className="flex items-center gap-2 text-indigo-800 dark:text-indigo-300 font-bold text-xs uppercase">
+                               <CalendarRange size={14} /> {t.results.table.projection_monthly}
+                             </div>
+                             <div className="font-mono font-bold text-sm text-indigo-700 dark:text-indigo-300">
+                               {fmtCurrency(effectiveResult.LL)}
+                             </div>
+                           </div>
+                         </td>
+                       </tr>
+                     )}
                     
                     <tr className="bg-slate-100/50 dark:bg-slate-700/50 border-t-2 border-slate-100 dark:border-slate-600"><td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100 text-sm">{llLabel}</td><td className={`px-6 py-4 text-right font-bold text-sm ${displayResult.LL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{fmtCurrency(displayResult.LL)}</td></tr>
                 </tbody>
