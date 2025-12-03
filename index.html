@@ -4,10 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#1C3A5B" />
-    <meta name="description" content="Assistente Financeiro para Negócios Digitais e Assinaturas." />
     
+    <!-- SEO & Metadata -->
+    <title>FinCalc Digital - Calculadora de Lucro e Precificação</title>
+    <meta name="description" content="Calcule margem de contribuição, ponto de equilíbrio e lucro líquido do seu negócio digital. Ferramenta gratuita para SaaS, Infoprodutos e E-commerce." />
+    <meta name="keywords" content="calculadora financeira, precificação, margem de contribuição, saas, infoproduto, lucro, ponto de equilíbrio" />
+    <meta name="author" content="FinCalc Digital" />
+
+    <!-- Open Graph / Facebook / WhatsApp Preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="FinCalc Digital - Domine seus Números" />
+    <meta property="og:description" content="Pare de perder dinheiro. Calcule o preço ideal e a meta de vendas para o seu negócio digital em segundos." />
+    <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/2910/2910768.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:locale" content="pt_BR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="FinCalc Digital - Assistente Financeiro" />
+    <meta name="twitter:description" content="Simule cenários de lucro e precificação para negócios digitais." />
+    <meta name="twitter:image" content="https://cdn-icons-png.flaticon.com/512/2910/2910768.png" />
+
     <!-- PWA Config -->
     <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2910/2910768.png" />
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2910/2910768.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -34,6 +55,9 @@
                 DEFAULT: '#1C3A5B',
                 light: '#2c527a'
               }
+            },
+            screens: {
+              'xs': '400px',
             }
           }
         }
@@ -54,7 +78,7 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      body { font-family: 'Inter', sans-serif; overscroll-behavior-y: none; }
+      body { font-family: 'Inter', sans-serif; overscroll-behavior-y: none; overflow-x: hidden; }
       
       @media print {
         @page { margin: 1cm; size: landscape; }
@@ -95,6 +119,21 @@
         }
         
         ::-webkit-scrollbar { display: none; }
+      }
+      
+      /* Helper para forçar layout PDF */
+      .pdf-generation-active {
+         background-color: white !important;
+         color: #0f172a !important; /* Slate 900 */
+         box-shadow: none !important;
+         margin: 0 auto !important;
+      }
+      .pdf-generation-active .dark {
+         background-color: white !important;
+         color: #0f172a !important;
+      }
+      .pdf-generation-active * {
+         border-color: #e2e8f0 !important; /* Slate 200 */
       }
     </style>
   <script type="importmap">

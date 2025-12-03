@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FinancialInputs, CalculationMode, CalculationResult, HistoryItem, Language } from './types';
 import { calculateFinancials } from './utils/calculations';
 import InputSection from './components/InputSection';
@@ -7,7 +7,7 @@ import HistoryModal from './components/HistoryModal';
 import EducationalGuide from './components/EducationalGuide';
 import CurrencyTicker from './components/CurrencyTicker';
 import AuthModal from './components/AuthModal';
-import { Moon, Sun, Clock, Share2, Check, BookOpen, DownloadCloud, DollarSign, Globe, LogIn } from 'lucide-react';
+import { Moon, Sun, Clock, Share2, Check, BookOpen, DownloadCloud, DollarSign, Globe, LogIn, Settings } from 'lucide-react';
 import { translations } from './utils/translations';
 import { getUser, signOut, saveSimulation, getSimulations, deleteSimulation } from './services/supabase';
 
@@ -42,6 +42,10 @@ function App() {
   // Currency & Language State
   const [currency, setCurrency] = useState<string>('BRL');
   const [language, setLanguage] = useState<Language>('pt');
+  
+  // UI State
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
 
   // Load translations based on current language
   const t = translations[language];
@@ -112,6 +116,17 @@ function App() {
 
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+
+  // Click outside to close settings
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setShowSettings(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Check User Session on Mount
   useEffect(() => {
@@ -256,9 +271,6 @@ function App() {
           newItem.isCloud = false;
         }
       } 
-      // Não salva localmente se não estiver logado (bloqueado na UI, mas proteção extra aqui)
-      // A UI deve impedir chegar aqui sem user, mas se chegar, salvamos localmente como fallback
-      // ou retornamos. Como a UI bloqueia, assumimos aqui a lógica de inserção no estado.
 
       setHistory(prev => {
         const updatedHistory = [newItem, ...prev];
@@ -292,69 +304,77 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300 print:bg-white print:block">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300 print:bg-white print:block overflow-x-hidden">
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-sm/50 transition-colors no-print print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          
+          {/* Logo Section */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <div className="bg-[#1C3A5B] dark:bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-[#1C3A5B]/20 dark:shadow-blue-900/30 transition-colors">
                <DollarSign size={20} strokeWidth={3} />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none">FinCalc <span className="text-[#1C3A5B] dark:text-blue-400">Digital</span></h1>
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 hidden sm:block">{t.app.subtitle}</p>
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none whitespace-nowrap">
+                FinCalc <span className="text-[#1C3A5B] dark:text-blue-400 hidden xs:inline">Digital</span>
+              </h1>
+              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 hidden md:block">{t.app.subtitle}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-             {/* Language & Currency Toggles */}
-             <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1 mr-1 gap-1">
-                {/* Language Toggle */}
-                <button
-                   onClick={() => setLanguage(language === 'pt' ? 'en' : 'pt')}
-                   className="px-2 py-1 text-[10px] font-bold rounded-md transition-all text-slate-500 hover:text-slate-700 dark:text-slate-400 flex items-center gap-1 min-w-[40px] justify-center"
-                   title="Mudar Idioma / Change Language"
-                >
-                   <Globe size={12} /> {language.toUpperCase()}
-                </button>
-                <div className="w-px h-3 bg-slate-300 dark:bg-slate-600"></div>
-                {/* Currency Toggle */}
-                <button
-                    onClick={() => setCurrency('BRL')}
-                    className={`px-1.5 py-1 text-[10px] font-bold rounded-md transition-all ${currency === 'BRL' ? 'bg-white dark:bg-slate-600 text-[#1C3A5B] dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                  >
-                    R$
-                  </button>
-                  <button
-                    onClick={() => setCurrency('USD')}
-                    className={`px-1.5 py-1 text-[10px] font-bold rounded-md transition-all ${currency === 'USD' ? 'bg-white dark:bg-slate-600 text-[#1C3A5B] dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                  >
-                    $
-                  </button>
-                   <button
-                    onClick={() => setCurrency('EUR')}
-                    className={`px-1.5 py-1 text-[10px] font-bold rounded-md transition-all ${currency === 'EUR' ? 'bg-white dark:bg-slate-600 text-[#1C3A5B] dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                  >
-                    €
-                  </button>
+
+          {/* Actions Section */}
+          <div className="flex items-center gap-1.5 sm:gap-3">
+             
+             {/* Settings Dropdown (Language & Currency) */}
+             <div className="relative" ref={settingsRef}>
+               <button 
+                 onClick={() => setShowSettings(!showSettings)}
+                 className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${showSettings ? 'bg-slate-100 dark:bg-slate-800 text-[#1C3A5B]' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                 title="Ajustes (Idioma/Moeda)"
+               >
+                 <Settings size={20} />
+                 {/* Mostra info apenas em telas maiores */}
+                 <span className="text-[10px] font-bold hidden sm:inline-block">{language.toUpperCase()} / {currency}</span>
+               </button>
+
+               {/* Dropdown Menu */}
+               {showSettings && (
+                 <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="p-3">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 ml-1">Idioma</p>
+                      <div className="flex gap-1 mb-4">
+                        <button onClick={() => { setLanguage('pt'); setShowSettings(false); }} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${language === 'pt' ? 'bg-[#1C3A5B] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>PT</button>
+                        <button onClick={() => { setLanguage('en'); setShowSettings(false); }} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${language === 'en' ? 'bg-[#1C3A5B] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>EN</button>
+                      </div>
+                      
+                      <div className="w-full h-px bg-slate-100 dark:bg-slate-800 mb-3"></div>
+
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 ml-1">Moeda</p>
+                      <div className="grid grid-cols-3 gap-1">
+                        <button onClick={() => { setCurrency('BRL'); setShowSettings(false); }} className={`py-1.5 text-xs font-bold rounded-md ${currency === 'BRL' ? 'bg-[#1C3A5B] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>R$</button>
+                        <button onClick={() => { setCurrency('USD'); setShowSettings(false); }} className={`py-1.5 text-xs font-bold rounded-md ${currency === 'USD' ? 'bg-[#1C3A5B] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>$</button>
+                        <button onClick={() => { setCurrency('EUR'); setShowSettings(false); }} className={`py-1.5 text-xs font-bold rounded-md ${currency === 'EUR' ? 'bg-[#1C3A5B] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>€</button>
+                      </div>
+                    </div>
+                 </div>
+               )}
              </div>
 
+             <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
+
+             {/* Action Buttons */}
              {deferredPrompt && (
-               <button onClick={handleInstallClick} className="p-2 text-[#1C3A5B] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors flex items-center gap-2 group animate-in fade-in" title={t.app.install}>
+               <button onClick={handleInstallClick} className="p-2 text-[#1C3A5B] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors" title={t.app.install}>
                  <DownloadCloud size={20} />
-                 <span className="hidden lg:inline text-xs font-bold">{t.app.install}</span>
                </button>
              )}
 
-             <button onClick={() => setIsGuideOpen(true)} className="p-2 text-[#1C3A5B] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors flex items-center gap-2 group" title={t.app.guide}>
+             <button onClick={() => setIsGuideOpen(true)} className="p-2 text-[#1C3A5B] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors" title={t.app.guide}>
                <BookOpen size={20} />
-               <span className="hidden lg:inline text-xs font-bold">{t.app.guide}</span>
              </button>
 
-             <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-
-             <button onClick={handleShare} className={`p-2 rounded-lg transition-all flex items-center gap-2 text-xs font-bold ${isCopied ? 'bg-emerald-100 text-emerald-700' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`} title={t.app.share}>
-               {isCopied ? <Check size={18} /> : <Share2 size={18} />}
-               <span className="hidden lg:inline">{isCopied ? t.app.copied : t.app.share}</span>
+             <button onClick={handleShare} className={`p-2 rounded-lg transition-all ${isCopied ? 'bg-emerald-100 text-emerald-700' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`} title={t.app.share}>
+               {isCopied ? <Check size={20} /> : <Share2 size={20} />}
              </button>
 
              <button onClick={() => setIsHistoryOpen(true)} className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors relative" title={t.app.history}>
@@ -362,20 +382,18 @@ function App() {
                {history.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-slate-900"></span>}
              </button>
              
-             {/* User Auth Button */}
+             {/* Auth & Theme */}
              {user ? (
-               <div className="flex items-center gap-2">
-                 <button onClick={handleLogout} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors text-xs font-bold">
-                   Sair
-                 </button>
-               </div>
+               <button onClick={handleLogout} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Sair">
+                 <LogIn size={20} className="rotate-180" />
+               </button>
              ) : (
-                <button onClick={() => setIsAuthOpen(true)} className="p-2 text-[#1C3A5B] hover:bg-blue-50 rounded-lg transition-colors" title="Entrar / Criar Conta">
+                <button onClick={() => setIsAuthOpen(true)} className="p-2 text-[#1C3A5B] hover:bg-blue-50 rounded-lg transition-colors" title="Entrar">
                   <LogIn size={20} />
                 </button>
              )}
 
-             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title={isDarkMode ? "Modo Claro" : "Modo Escuro"}>
+             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors hidden sm:block" title="Tema">
                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
              </button>
           </div>
