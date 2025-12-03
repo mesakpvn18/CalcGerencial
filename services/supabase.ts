@@ -1,14 +1,12 @@
+
 import { createClient } from '@supabase/supabase-js';
-import { HistoryItem } from '../types';
+import { HistoryItem, UserProfile } from '../types';
 
 // ==============================================================================
 // CONFIGURAÇÃO DO SUPABASE
 // ==============================================================================
-// Mantenha esses placeholders para o GitHub (Segurança)
-// Configure os valores reais no painel da Vercel (Environment Variables)
 const PLACEHOLDER_URL = "COLE_SUA_URL_AQUI";
 const PLACEHOLDER_KEY = "COLE_SUA_KEY_AQUI";
-// ==============================================================================
 
 let supabase: any = null;
 
@@ -16,8 +14,6 @@ const initClient = () => {
   let url = PLACEHOLDER_URL;
   let key = PLACEHOLDER_KEY;
 
-  // 1. Tenta ler das variáveis de ambiente (Padrão Vite/Vercel)
-  // Isso é o que vai funcionar quando estiver hospedado na Vercel
   try {
     // @ts-ignore
     if (typeof import.meta !== 'undefined' && import.meta.env) {
@@ -28,7 +24,6 @@ const initClient = () => {
     }
   } catch (e) {}
 
-  // 2. Fallback para process.env (caso use outro sistema de build)
   if (url === PLACEHOLDER_URL || key === PLACEHOLDER_KEY) {
     try {
       // @ts-ignore
@@ -37,15 +32,10 @@ const initClient = () => {
         if (process.env.VITE_SUPABASE_URL) url = process.env.VITE_SUPABASE_URL;
         // @ts-ignore
         if (process.env.VITE_SUPABASE_ANON_KEY) key = process.env.VITE_SUPABASE_ANON_KEY;
-        // @ts-ignore
-        if (process.env.REACT_APP_SUPABASE_URL) url = process.env.REACT_APP_SUPABASE_URL;
-        // @ts-ignore
-        if (process.env.REACT_APP_SUPABASE_ANON_KEY) key = process.env.REACT_APP_SUPABASE_ANON_KEY;
       }
     } catch (e) {}
   }
 
-  // 3. Verifica se temos chaves válidas (que não sejam os placeholders)
   const isValidUrl = url && url !== "COLE_SUA_URL_AQUI";
   const isValidKey = key && key !== "COLE_SUA_KEY_AQUI";
 
@@ -55,12 +45,9 @@ const initClient = () => {
     } catch (e) {
       console.error("Erro ao iniciar cliente Supabase:", e);
     }
-  } else {
-    console.warn("Supabase não configurado. Adicione VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nas variáveis de ambiente da Vercel.");
   }
 };
 
-// Inicializa
 initClient();
 
 export const initSupabase = (url: string, key: string) => {
@@ -79,14 +66,18 @@ export const isSupabaseConfigured = () => !!supabase;
 // --- AUTH FUNCTIONS ---
 
 export const signUp = async (email: string, pass: string) => {
-  if (!supabase) throw new Error("Banco de dados não conectado. Verifique as configurações na Vercel.");
+  if (!supabase) throw new Error("Banco de dados não conectado.");
   const { data, error } = await supabase.auth.signUp({ email, password: pass });
   if (error) throw error;
+  
+  if (data.user) {
+    await createProfile(data.user.id, email);
+  }
   return data;
 };
 
 export const signIn = async (email: string, pass: string) => {
-  if (!supabase) throw new Error("Banco de dados não conectado. Verifique as configurações na Vercel.");
+  if (!supabase) throw new Error("Banco de dados não conectado.");
   const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
   if (error) throw error;
   return data;
@@ -97,19 +88,55 @@ export const signOut = async () => {
   await supabase.auth.signOut();
 };
 
+// --- PROFILE FUNCTIONS ---
+
+const createProfile = async (userId: string, email: string) => {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from('profiles')
+    .insert([{ id: userId, email, is_pro: false }]);
+  if (error) console.warn("Nota: Perfil pode já existir ou erro na criação", error);
+};
+
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error) {
+    return { id: userId, email: '', is_pro: false }; 
+  }
+  return data;
+};
+
+export const upgradeUserToPro = async (userId: string) => {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_pro: true })
+    .eq('id', userId);
+
+  if (error) throw error;
+};
+
 export const getUser = async () => {
   if (!supabase) return null;
   const { data } = await supabase.auth.getUser();
-  return data.user;
+  if (data.user) {
+    const profile = await getUserProfile(data.user.id);
+    return { ...data.user, ...profile };
+  }
+  return null;
 };
 
 // --- DATABASE FUNCTIONS ---
 
 export const saveSimulation = async (item: HistoryItem, userId: string) => {
   if (!supabase) return null;
-  
   const { id, ...payload } = item;
-  
   const { data, error } = await supabase
     .from('simulations')
     .insert([{
@@ -130,7 +157,6 @@ export const saveSimulation = async (item: HistoryItem, userId: string) => {
 
 export const getSimulations = async (userId: string) => {
   if (!supabase) return [];
-  
   const { data, error } = await supabase
     .from('simulations')
     .select('*')
@@ -138,7 +164,6 @@ export const getSimulations = async (userId: string) => {
     .order('timestamp', { ascending: false });
 
   if (error) throw error;
-  
   return data.map((row: any) => ({
     id: row.id,
     timestamp: new Date(row.timestamp).getTime(),
@@ -153,11 +178,9 @@ export const getSimulations = async (userId: string) => {
 
 export const deleteSimulation = async (id: string | number) => {
   if (!supabase) return;
-  
   const { error } = await supabase
     .from('simulations')
     .delete()
     .eq('id', id);
-
   if (error) throw error;
 };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { FinancialInputs, CalculationMode, CalculationResult, HistoryItem, Language } from './types';
 import { calculateFinancials } from './utils/calculations';
@@ -7,7 +8,12 @@ import HistoryModal from './components/HistoryModal';
 import EducationalGuide from './components/EducationalGuide';
 import CurrencyTicker from './components/CurrencyTicker';
 import AuthModal from './components/AuthModal';
-import { Moon, Sun, Clock, Share2, Check, BookOpen, DownloadCloud, DollarSign, Globe, LogIn, Settings, ChevronDown, User } from 'lucide-react';
+// NOVOS MODAIS
+import UpgradeModal from './components/UpgradeModal';
+import ScenarioComparison from './components/ScenarioComparison';
+import GoalSeekModal from './components/GoalSeekModal';
+
+import { Moon, Sun, Clock, Share2, Check, BookOpen, DownloadCloud, DollarSign, Globe, LogIn, Settings, ChevronDown, User, Crown } from 'lucide-react';
 import { translations } from './utils/translations';
 import { getUser, signOut, saveSimulation, getSimulations, deleteSimulation } from './services/supabase';
 
@@ -52,7 +58,17 @@ function App() {
 
   // Auth State
   const [user, setUser] = useState<any>(null);
+  const [isPro, setIsPro] = useState(false); // NOVO
+  
+  // Modal States
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false); // NOVO
+  const [isCompareOpen, setIsCompareOpen] = useState(false); // NOVO
+  const [isGoalOpen, setIsGoalOpen] = useState(false); // NOVO
+  
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   // History State
   const [history, setHistory] = useState<HistoryItem[]>(() => {
@@ -67,9 +83,6 @@ function App() {
     }
     return [];
   });
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   // App State - Initialize from URL or Default
   const [mode, setMode] = useState<CalculationMode>(() => {
@@ -123,7 +136,7 @@ function App() {
       const currentUser = await getUser();
       if (currentUser) {
         setUser(currentUser);
-        // Load cloud history
+        setIsPro(!!currentUser.is_pro); // Carrega status PRO
         loadCloudHistory(currentUser.id);
       }
     };
@@ -299,7 +312,17 @@ function App() {
   const handleLogout = async () => {
     await signOut();
     setUser(null);
-    setHistory([]); // Limpa histórico da tela
+    setIsPro(false);
+    setHistory([]); 
+  };
+
+  // Helper para controlar recursos Pro
+  const handleProAction = (action: () => void) => {
+    if (!isPro) {
+      setIsUpgradeOpen(true);
+    } else {
+      action();
+    }
   };
 
   return (
@@ -316,6 +339,7 @@ function App() {
             <div>
               <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none whitespace-nowrap">
                 FinCalc <span className="text-[#1C3A5B] dark:text-blue-400 hidden xs:inline">Digital</span>
+                {isPro && <span className="ml-2 text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200 uppercase font-bold align-top">PRO</span>}
               </h1>
               <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 hidden md:block">{t.app.subtitle}</p>
             </div>
@@ -324,6 +348,16 @@ function App() {
           {/* Actions Section */}
           <div className="flex items-center gap-1.5 sm:gap-3">
              
+             {/* Botão Upgrade (Se não for Pro) */}
+             {!isPro && (
+                <button 
+                  onClick={() => setIsUpgradeOpen(true)}
+                  className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-amber-200 to-yellow-400 text-amber-900 text-xs font-bold rounded-full shadow-sm hover:shadow-md transition-all hover:scale-105"
+                >
+                  <Crown size={14} fill="currentColor" /> Upgrade
+                </button>
+             )}
+
              {/* Settings Dropdown (Language & Currency) */}
              <div className="relative" ref={settingsRef}>
                <button 
@@ -415,6 +449,9 @@ function App() {
                onReset={handleReset}
                currency={currency}
                language={language}
+               isPro={isPro}
+               onCompare={() => handleProAction(() => setIsCompareOpen(true))}
+               onGoalSeek={() => handleProAction(() => setIsGoalOpen(true))}
              />
           </div>
 
@@ -429,7 +466,9 @@ function App() {
                 currency={currency}
                 language={language}
                 user={user}
+                isPro={isPro}
                 onOpenAuth={() => setIsAuthOpen(true)}
+                onOpenUpgrade={() => setIsUpgradeOpen(true)}
               />
             ) : (
               <div className="h-96 flex items-center justify-center text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 transition-colors">
@@ -457,7 +496,7 @@ function App() {
       />
 
       <EducationalGuide 
-        isOpen={isGuideOpen}
+        isOpen={isGuideOpen} 
         onClose={() => setIsGuideOpen(false)}
         language={language}
       />
@@ -468,6 +507,32 @@ function App() {
         onLoginSuccess={(u) => { setUser(u); loadCloudHistory(u.id); }}
         language={language}
       />
+
+      {/* NOVOS MODAIS */}
+      <UpgradeModal 
+        isOpen={isUpgradeOpen} 
+        onClose={() => setIsUpgradeOpen(false)} 
+        userId={user?.id}
+        onUpgradeSuccess={() => setIsPro(true)}
+        language={language}
+      />
+      
+      <ScenarioComparison 
+        isOpen={isCompareOpen} 
+        onClose={() => setIsCompareOpen(false)} 
+        currentInputs={inputs}
+        currency={currency}
+        language={language === 'pt' ? 'pt-BR' : 'en-US'}
+      />
+
+      <GoalSeekModal 
+        isOpen={isGoalOpen} 
+        onClose={() => setIsGoalOpen(false)} 
+        currentInputs={inputs}
+        currency={currency}
+        language={language === 'pt' ? 'pt-BR' : 'en-US'}
+      />
+
     </div>
   );
 }
