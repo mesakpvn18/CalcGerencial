@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { BrainCircuit, Loader2, TrendingUp, AlertTriangle, Scale, DollarSign, Wallet, Save, PieChart as PieIcon, List, ShieldCheck, Users, Printer, FileText, HelpCircle, Check, Activity, Download, CalendarRange } from 'lucide-react';
 import { translations } from '../utils/translations';
+import AdUnit from './AdUnit';
 
 interface Props {
   result: CalculationResult;
@@ -287,6 +288,11 @@ const ResultsSection: React.FC<Props> = ({ result, inputs, mode, onSaveHistory, 
           icon={DollarSign}
           theme="violet"
         />
+      </div>
+
+      {/* AD UNIT - HORIZONTAL BANNER */}
+      <div className="no-print w-full flex justify-center">
+          <AdUnit slotId="0987654321" format="horizontal" testMode={true} className="w-full max-w-3xl" />
       </div>
 
       {/* Gráficos */}

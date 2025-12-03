@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { FinancialInputs, CalculationMode, Language } from '../types';
 import { Calculator, Target, BarChart2, Info, DollarSign, Percent, Hash, Briefcase, RotateCcw, AlertCircle, TrendingDown, Megaphone, FolderOpen, Zap, Euro } from 'lucide-react';
 import { translations } from '../utils/translations';
+import AdUnit from './AdUnit';
 
 interface Props {
   inputs: FinancialInputs;
@@ -339,6 +340,15 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs, mode, setMode, onRes
                )}
             </div>
           </section>
+
+          {/* AD UNIT - VERTICAL SIDEBAR */}
+          <section className="no-print">
+             <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block mb-2">Publicidade</span>
+                <AdUnit slotId="1234567890" format="rectangle" testMode={true} />
+             </div>
+          </section>
+
         </div>
       </div>
       
