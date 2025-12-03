@@ -331,28 +331,37 @@ function App() {
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-sm/50 transition-colors no-print print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           
-          {/* Logo Section */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            <div className="bg-[#1C3A5B] dark:bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-[#1C3A5B]/20 dark:shadow-blue-900/30 transition-colors">
+          {/* Logo Section - min-w-0 permite encolher se necessário */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 overflow-hidden">
+            <div className="bg-[#1C3A5B] dark:bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-[#1C3A5B]/20 dark:shadow-blue-900/30 transition-colors flex-shrink-0">
                <DollarSign size={20} strokeWidth={3} />
             </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none whitespace-nowrap">
-                FinCalc <span className="text-[#1C3A5B] dark:text-blue-400 hidden xs:inline">Digital</span>
-                {isPro && <span className="ml-2 text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200 uppercase font-bold align-top">PRO</span>}
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none flex items-center whitespace-nowrap">
+                FinCalc <span className="text-[#1C3A5B] dark:text-blue-400 hidden xs:inline ml-1">Digital</span>
+                
+                {/* PRO Badge Responsive */}
+                {isPro && (
+                  <span className="ml-2 flex items-center justify-center">
+                    {/* Mobile: Ícone de Coroa */}
+                    <Crown size={16} className="text-amber-500 sm:hidden" fill="currentColor" />
+                    {/* Desktop: Badge completo */}
+                    <span className="hidden sm:inline-block text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200 uppercase font-bold align-top">PRO</span>
+                  </span>
+                )}
               </h1>
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 hidden md:block">{t.app.subtitle}</p>
+              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 hidden md:block truncate">{t.app.subtitle}</p>
             </div>
           </div>
 
-          {/* Actions Section */}
-          <div className="flex items-center gap-1.5 sm:gap-3">
+          {/* Actions Section - flex-shrink-0 impede que os botões sejam esmagados */}
+          <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0 ml-2">
              
              {/* Botão Upgrade (Se não for Pro) */}
              {!isPro && (
                 <button 
                   onClick={() => setIsUpgradeOpen(true)}
-                  className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-amber-200 to-yellow-400 text-amber-900 text-xs font-bold rounded-full shadow-sm hover:shadow-md transition-all hover:scale-105"
+                  className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-amber-200 to-yellow-400 text-amber-900 text-xs font-bold rounded-full shadow-sm hover:shadow-md transition-all hover:scale-105 whitespace-nowrap"
                 >
                   <Crown size={14} fill="currentColor" /> Upgrade
                 </button>
@@ -402,7 +411,7 @@ function App() {
                </button>
              )}
 
-             <button onClick={() => setIsGuideOpen(true)} className="p-2 text-[#1C3A5B] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors" title={t.app.guide}>
+             <button onClick={() => setIsGuideOpen(true)} className="p-2 text-[#1C3A5B] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors hidden xs:block" title={t.app.guide}>
                <BookOpen size={20} />
              </button>
 
@@ -417,11 +426,11 @@ function App() {
              
              {/* Auth & Theme */}
              {user ? (
-               <button onClick={handleLogout} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Sair">
+               <button onClick={handleLogout} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors flex-shrink-0" title="Sair">
                  <LogIn size={20} className="rotate-180" />
                </button>
              ) : (
-                <button onClick={() => setIsAuthOpen(true)} className="p-2 text-[#1C3A5B] hover:bg-blue-50 rounded-lg transition-colors" title="Entrar">
+                <button onClick={() => setIsAuthOpen(true)} className="p-2 text-[#1C3A5B] hover:bg-blue-50 rounded-lg transition-colors flex-shrink-0" title="Entrar">
                   <LogIn size={20} />
                 </button>
              )}
