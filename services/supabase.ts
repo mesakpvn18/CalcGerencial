@@ -64,6 +64,10 @@ export const initSupabase = (url: string, key: string) => {
 
 export const isSupabaseConfigured = () => !!supabase;
 
+// LISTA DE EMAILS ADMINISTRATIVOS
+// Adicione aqui os emails que devem ter acesso PRO automático ao logar no Supabase
+const ADMIN_EMAILS = ['admin@fincalc.com']; 
+
 // --- AUTH FUNCTIONS ---
 
 export const signUp = async (email: string, pass: string) => {
@@ -86,16 +90,15 @@ export const signIn = async (email: string, pass: string) => {
   if (data.user) {
     const profile = await getUserProfile(data.user.id);
     
-    // --- ADMIN BYPASS PARA TESTES ---
-    // Se o email for admin@fincalc.com, forçamos is_pro = true
-    const isMockAdmin = email === 'admin@fincalc.com';
+    // Verifica se é admin por email (bypass de PRO status via código)
+    const isAdmin = ADMIN_EMAILS.includes(email);
     
     return { 
       ...data, 
       user: { 
         ...data.user, 
         ...profile, 
-        is_pro: isMockAdmin ? true : profile?.is_pro 
+        is_pro: isAdmin ? true : profile?.is_pro 
       } 
     };
   }
@@ -152,13 +155,13 @@ export const getUser = async () => {
   if (data.user) {
     const profile = await getUserProfile(data.user.id);
     
-    // --- ADMIN BYPASS PARA TESTES (Sessão Persistente) ---
-    const isMockAdmin = data.user.email === 'admin@fincalc.com';
+    // Verifica se é admin por email (bypass de PRO status via código)
+    const isAdmin = data.user.email && ADMIN_EMAILS.includes(data.user.email);
 
     return { 
       ...data.user, 
-      ...profile,
-      is_pro: isMockAdmin ? true : profile?.is_pro
+      ...profile, 
+      is_pro: isAdmin ? true : profile?.is_pro
     };
   }
   return null;
