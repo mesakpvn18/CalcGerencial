@@ -184,13 +184,6 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
     <div id="printable-dashboard" className="space-y-6 animate-in fade-in duration-500 pb-10">
       <style>{`.recharts-surface path { outline: none !important; } .recharts-sector:focus { outline: none !important; }`}</style>
       
-      {isSimulating && (
-        <div className="bg-indigo-600 text-white px-6 py-3 rounded-xl shadow-lg shadow-indigo-900/20 flex items-center justify-between animate-in slide-in-from-top-2 no-print">
-           <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Activity size={20}/></div><div><p className="font-bold text-sm">Modo Simulação Ativo</p><p className="text-xs text-indigo-100 opacity-90">Preço alterado em <span className="font-bold">{priceSensitivity > 0 ? '+' : ''}{priceSensitivity}%</span>. Todos os gráficos abaixo mostram este cenário hipotético.</p></div></div>
-           <button onClick={() => setPriceSensitivity(0)} className="px-3 py-1.5 bg-white text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-50 transition-colors flex items-center gap-1"><RefreshCcw size={12} /> Restaurar</button>
-        </div>
-      )}
-
       {/* PDF Header */}
       <div className="hidden pdf-mode mb-8 bg-white">
         <div className="w-full h-3 bg-[#1C3A5B] mb-6"></div>
@@ -271,6 +264,13 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
         </div>
       </div>
       
+      {isSimulating && (
+        <div className="bg-indigo-600 text-white px-6 py-3 rounded-xl shadow-lg shadow-indigo-900/20 flex items-center justify-between animate-in slide-in-from-top-2 no-print">
+           <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Activity size={20}/></div><div><p className="font-bold text-sm">Modo Simulação Ativo</p><p className="text-xs text-indigo-100 opacity-90">Preço alterado em <span className="font-bold">{priceSensitivity > 0 ? '+' : ''}{priceSensitivity}%</span>. Todos os gráficos abaixo mostram este cenário hipotético.</p></div></div>
+           <button onClick={() => setPriceSensitivity(0)} className="px-3 py-1.5 bg-white text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-50 transition-colors flex items-center gap-1"><RefreshCcw size={12} /> Restaurar</button>
+        </div>
+      )}
+
       {/* Simulador */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col print-chart-fix pdf-avoid-break">
           <div className="mb-6 flex justify-between items-center">
