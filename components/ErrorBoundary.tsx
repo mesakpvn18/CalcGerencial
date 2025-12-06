@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { errorTracker } from '../services/errorTracking';
 import { AlertTriangle, RefreshCcw, Home } from 'lucide-react';
 
@@ -11,8 +11,7 @@ interface State {
   error: Error | null;
 }
 
-// Fix: Use React.Component explicitamente para garantir tipagem correta de props e setState
-class ErrorBoundary extends React.Component<Props, State> {
+class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {

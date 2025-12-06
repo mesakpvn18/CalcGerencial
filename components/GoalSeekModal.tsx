@@ -37,7 +37,19 @@ const GoalSeekModal: React.FC<Props> = ({ isOpen, onClose, currentInputs, onAppl
     const CP = currentInputs.CP || 0;
     const TxF = currentInputs.TxF || 0;
     const TxP = (currentInputs.TxP || 0) / 100;
-    const CF_Total = (currentInputs.CF || 0) + (currentInputs.Marketing || 0);
+    
+    // CORREÇÃO: Lidar com o MarketingType
+    const MarketingType = currentInputs.MarketingType || 'fixed';
+    let fixedMarketing = 0;
+    let variableMarketingDecimal = 0;
+
+    if (MarketingType === 'percent') {
+        variableMarketingDecimal = (currentInputs.Marketing || 0) / 100;
+    } else {
+        fixedMarketing = currentInputs.Marketing || 0;
+    }
+
+    const CF_Total = (currentInputs.CF || 0) + fixedMarketing;
 
     let required = 0;
     let delta = 0;
@@ -60,15 +72,12 @@ const GoalSeekModal: React.FC<Props> = ({ isOpen, onClose, currentInputs, onAppl
              } else {
                 // Buscar PREÇO para atingir Lucro $ (com Volume fixo)
                 const volume = currentInputs.Meta || 1;
-                // LL = (P * Q) - (CV_Un * Q) - CF_Total
-                // LL + CF_Total = Q * (P - (CP + TxF + P*TxP))
-                // (LL + CF_Total) / Q = P * (1 - TxP) - (CP + TxF)
-                // P * (1 - TxP) = ((LL + CF_Total) / Q) + (CP + TxF)
-                // P = (((LL + CF_Total) / Q) + (CP + TxF)) / (1 - TxP)
+                
+                // CORREÇÃO: Denominador inclui Marketing Variável
+                const denominator = 1 - TxP - variableMarketingDecimal;
+                if (denominator <= 0) throw "Taxas variáveis excedem 100%.";
                 
                 const numerator = (TotalNeeded / volume) + (CP + TxF);
-                const denominator = 1 - TxP;
-                if (denominator <= 0) throw "Taxas variáveis excedem 100%.";
                 
                 required = numerator / denominator;
                 delta = required - (currentInputs.PVS || 0);
@@ -77,27 +86,16 @@ const GoalSeekModal: React.FC<Props> = ({ isOpen, onClose, currentInputs, onAppl
         } else {
             // META: MARGEM LÍQUIDA (%)
             const TargetMargin = targetValue / 100;
-            if (TargetMargin >= (1 - TxP)) throw "Margem impossível com as taxas atuais.";
+            // CORREÇÃO: Verificação inclui Marketing Variável
+            if (TargetMargin >= (1 - TxP - variableMarketingDecimal)) throw "Margem impossível com as taxas atuais.";
 
             if (seekMode === 'volume') {
                // Buscar VOLUME para atingir Margem %
-               // LL / Revenue = Margin
-               // (Revenue - VarCosts - FixCosts) / Revenue = Margin
-               // 1 - (VarCosts/Rev) - (FixCosts/Rev) = Margin
-               // FixCosts/Rev = 1 - (VarCosts/Rev) - Margin
-               // Rev = FixCosts / (1 - (VarCosts/Rev) - Margin)
-               // Rev = P * Q.   VarCosts/Rev = (CV_Un * Q) / (P * Q) = CV_Un / P ??? Não, CV varia com preço se tem taxa %
-               
-               // MC_Relativa = (P - CP - TxF - P*TxP) / P  = 1 - TxP - ((CP+TxF)/P)
-               // Margin = MC_Relativa - (CF_Total / Revenue)
-               // Margin = (1 - TxP - (CP+TxF)/P) - (CF_Total / (P*Q))
-               // CF_Total / (P*Q) = 1 - TxP - (CP+TxF)/P - Margin
-               // Q = CF_Total / (P * (1 - TxP - Margin) - (CP + TxF))
-               
                const P = currentInputs.PVS || 0;
                if (P <= 0) throw "Defina um preço inicial maior que zero.";
                
-               const denominator = P * (1 - TxP - TargetMargin) - (CP + TxF);
+               // CORREÇÃO: Incluir variável MKT no denominador
+               const denominator = P * (1 - TxP - variableMarketingDecimal - TargetMargin) - (CP + TxF);
                if (denominator <= 0) throw "Margem inatingível com este preço. O custo variável unitário é muito alto.";
                
                required = Math.ceil(CF_Total / denominator);
@@ -105,22 +103,12 @@ const GoalSeekModal: React.FC<Props> = ({ isOpen, onClose, currentInputs, onAppl
 
             } else {
                 // Buscar PREÇO para atingir Margem % (com Volume fixo)
-                // P = (Costs + Profit)
-                // Profit = P * Q * Margin
-                // Rev = TotalCosts / (1 - Margin) ?? Mais complexo com taxas
-                // LL = Revenue * Margin
-                // Rev * Margin = Rev - VarCosts - FixCosts
-                // Rev * (1 - Margin) = VarCosts + FixCosts
-                // P*Q * (1 - Margin) = (Q * (CP + TxF + P*TxP)) + CF_Total
-                // P*Q*(1-Margin) - P*Q*TxP = Q*(CP+TxF) + CF_Total
-                // P * Q * (1 - Margin - TxP) = Q*(CP+TxF) + CF_Total
-                // P = (Q*(CP+TxF) + CF_Total) / (Q * (1 - Margin - TxP))
-                
                 const volume = currentInputs.Meta || 1;
                 const numerator = (volume * (CP + TxF)) + CF_Total;
-                const denominator = volume * (1 - TxP - TargetMargin);
+                // CORREÇÃO: Incluir variável MKT no denominador
+                const denominator = volume * (1 - TxP - variableMarketingDecimal - TargetMargin);
                 
-                if (denominator <= 0) throw "Margem impossível. A soma de Taxas + Margem Desejada excede 100%.";
+                if (denominator <= 0) throw "Margem impossível. Taxas + Margem excedem 100%.";
                 
                 required = numerator / denominator;
                 delta = required - (currentInputs.PVS || 0);

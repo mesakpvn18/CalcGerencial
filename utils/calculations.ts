@@ -93,7 +93,12 @@ export const calculateFinancials = (
   const CAC = calculatedMeta > 0 ? MarketingTotal / calculatedMeta : 0;
   const churnDecimal = (Churn || 0) / 100;
   const Lifetime = churnDecimal > 0 ? 1 / churnDecimal : 0;
-  const LTV = churnDecimal > 0 ? calculatedPVS / churnDecimal : (calculatedPVS * 12);
+  
+  // CORREÇÃO: LTV deve ser baseado na Margem de Contribuição (MC_Real), não na Receita (PVS).
+  // Se usar Receita, o LTV fica inflado e ignora custos variáveis.
+  // Se Churn for 0, usamos 12 meses como cap de projeção conservadora para evitar infinito.
+  const LTV = churnDecimal > 0 ? MC_Real / churnDecimal : (MC_Real * 12);
+  
   const Payback = (CAC > 0 && MC_Real > 0) ? CAC / MC_Real : 0;
   const TotalCosts = (CV_UN * calculatedMeta) + TotalFixedCosts;
   const ROI = TotalCosts > 0 ? (LL / TotalCosts) * 100 : 0;

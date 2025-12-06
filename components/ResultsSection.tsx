@@ -331,9 +331,16 @@ const ResultsSection: React.FC<Props> = ({ result: initialResult, inputs: initia
                     <TableRow label={t.results.table.mmc} value={displayResult.MMC} subLabel="Absorção CF" tooltip={t.results.tooltips.mmc} fmtCurrency={fmtCurrency} />
                     <tr className="bg-slate-50 dark:bg-slate-700/30"><td colSpan={2} className="px-6 py-3 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2"><Users size={14} /> {t.results.table.efficiency}</td></tr>
                     <TableRow label={t.results.table.cac} value={displayResult.CAC} subLabel="Custo Aquisição" tooltip={t.results.tooltips.cac} fmtCurrency={fmtCurrency} />
-                     <TableRow label={t.results.table.payback} customFormattedValue={displayResult.Payback > 0 ? `${displayResult.Payback.toFixed(1)}` : "N/A"} subLabel={period === 'monthly' ? "Meses" : "Anos"} isStatus={true} statusColor={displayResult.Payback <= 6 ? 'text-emerald-600' : displayResult.Payback <= 12 ? 'text-amber-500' : 'text-red-500'} tooltip={t.results.tooltips.payback} />
+                    
+                    {/* 
+                        CORREÇÃO: Payback e Lifetime são métricas baseadas no ciclo do cliente (geralmente meses).
+                        Mesmo que a visão do P&L (Lucro) seja anual, o cliente não leva 12x mais tempo para pagar o CAC.
+                        Portanto, forçamos o rótulo "Meses" para evitar confusão (ex: "Payback: 6 Anos" quando na verdade são 6 meses).
+                    */}
+                    <TableRow label={t.results.table.payback} customFormattedValue={displayResult.Payback > 0 ? `${displayResult.Payback.toFixed(1)}` : "N/A"} subLabel="Meses" isStatus={true} statusColor={displayResult.Payback <= 6 ? 'text-emerald-600' : displayResult.Payback <= 12 ? 'text-amber-500' : 'text-red-500'} tooltip={t.results.tooltips.payback} />
                     <TableRow label={t.results.table.ltv} value={displayResult.LTV} subLabel="Valor Vitalício" tooltip={t.results.tooltips.ltv} fmtCurrency={fmtCurrency} />
-                     <TableRow label={t.results.table.lifetime} customFormattedValue={displayResult.Lifetime > 0 ? `${displayResult.Lifetime.toFixed(1)}` : "-"} subLabel={period === 'monthly' ? "Meses" : "Anos"} tooltip={t.results.tooltips.lifetime} />
+                    <TableRow label={t.results.table.lifetime} customFormattedValue={displayResult.Lifetime > 0 ? `${displayResult.Lifetime.toFixed(1)}` : "-"} subLabel="Meses" tooltip={t.results.tooltips.lifetime} />
+                    
                     <TableRow label={t.results.table.ratio} customFormattedValue={`${displayResult.LTV_CAC_Ratio.toFixed(1)}x`} isStatus={true} statusColor={displayResult.LTV_CAC_Ratio >= 3 ? 'text-emerald-600' : (displayResult.LTV_CAC_Ratio >= 1 ? 'text-amber-500' : 'text-red-500')} tooltip={t.results.tooltips.ratio} />
                     <TableRow label={t.results.table.roi} customFormattedValue={fmtPercent(displayResult.ROI)} isStatus={true} statusColor={displayResult.ROI > 0 ? 'text-emerald-600' : 'text-red-500'} tooltip={t.results.tooltips.roi} />
                      
